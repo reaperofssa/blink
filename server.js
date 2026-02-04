@@ -145,7 +145,7 @@ MongoClient.connect(MONGO_URI)
     gamesCollection = db.collection('games');
     matchmakingCollection = db.collection('matchmaking');
     challengesCollection = db.collection('challenges');
-    
+
     // Create indexes
     usersCollection.createIndex({ userId: 1 }, { unique: true });
     usersCollection.createIndex({ telegramId: 1 }, { unique: true });
@@ -155,32 +155,37 @@ MongoClient.connect(MONGO_URI)
     usersCollection.createIndex({ 'rankedStats.hardclassic.mythicRank': -1 });
     usersCollection.createIndex({ 'rankedStats.normalrnd.mythicRank': -1 });
     usersCollection.createIndex({ 'rankedStats.hardrnd.mythicRank': -1 });
-    
+
     roomsCollection.createIndex({ roomId: 1 }, { unique: true });
     roomsCollection.createIndex({ creatorId: 1 });
     roomsCollection.createIndex({ status: 1 });
     roomsCollection.createIndex(
-      { createdAt: 1 }, 
-      { 
+      { createdAt: 1 },
+      {
         expireAfterSeconds: 600,
-        partialFilterExpression: { status: 'waiting' } // Only delete waiting rooms after 10 mins
+        partialFilterExpression: { status: 'waiting' }
       }
     );
-    
+
     gamesCollection.createIndex({ roomId: 1 }, { unique: true });
     gamesCollection.createIndex({ status: 1 });
     gamesCollection.createIndex({ createdAt: 1 });
-    
+
     matchmakingCollection.createIndex({ userId: 1 });
     matchmakingCollection.createIndex({ mode: 1 });
-    matchmakingCollection.createIndex({ createdAt: 1 }, { expireAfterSeconds: 180 }); // Auto-cleanup after 3 mins
-    
-    // Challenges collection for daily/weekly tasks
-    const challengesCollection = db.collection('challenges');
+    matchmakingCollection.createIndex(
+      { createdAt: 1 },
+      { expireAfterSeconds: 180 }
+    );
+
+    // Challenges indexes
     challengesCollection.createIndex({ userId: 1 });
-    challengesCollection.createIndex({ type: 1 }); // 'daily' or 'weekly'
-    challengesCollection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-    
+    challengesCollection.createIndex({ type: 1 });
+    challengesCollection.createIndex(
+      { expiresAt: 1 },
+      { expireAfterSeconds: 0 }
+    );
+
     console.log('MongoDB connected and indexes created');
   })
   .catch(err => {
