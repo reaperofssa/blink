@@ -1089,6 +1089,38 @@ app.post('/matchmake', authenticateToken, async (req, res) => {
   }
 });
 
+app.get('/check-registration', async (req, res) => {
+  try {
+    const { telegramId } = req.query;
+    
+    if (!telegramId) {
+      return res.status(400).json({ error: 'Telegram ID required' });
+    }
+    
+    const user = await usersCollection.findOne({ 
+      telegramId: parseInt(telegramId) 
+    });
+    
+    if (user) {
+      return res.json({
+        registered: true,
+        user: {
+          userId: user.userId,
+          playerName: user.playerName,
+          playerTag: user.playerTag,
+          level: user.level
+        }
+      });
+    }
+    
+    res.json({ registered: false, user: null });
+    
+  } catch (error) {
+    console.error('Check registration error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Cancel matchmaking route
 app.post('/matchmake/cancel', authenticateToken, async (req, res) => {
   try {
