@@ -1041,6 +1041,183 @@ app.get('/game/:roomId', authenticateToken, async (req, res) => {
   }
 });
 
+// Get dashboard data (user info + matchmaking status + active room)
+app.get('/api/dashboard', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    // Get user data
+    const user = await usersCollection.findOne({ userId });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Check if user is in matchmaking queue
+    const matchmakingStatus = await matchmakingCollection.findOne({ userId });
+    
+    // Check if user has an active room
+    const activeRoom = await roomsCollection.findOne({
+      'players.userId': userId,
+      status: { $in: ['waiting', 'started'] }
+    });
+    
+    res.json({
+      user: {
+        userId: user.userId,
+        playerName: user.playerName,
+        playerTag: user.playerTag,
+        level: user.level,
+        coins: user.coins,
+        tokens: user.tokens,
+        points: user.points,
+        premium: user.premium || false
+      },
+      ranks: {
+        normalclassic: {
+          rank: user.rankedStats.normalclassic.rank,
+          position: user.rankedStats.normalclassic.position,
+          mythicRank: user.rankedStats.normalclassic.mythicRank,
+          wins: user.rankedStats.normalclassic.wins,
+          losses: user.rankedStats.normalclassic.losses
+        },
+        hardclassic: {
+          rank: user.rankedStats.hardclassic.rank,
+          position: user.rankedStats.hardclassic.position,
+          mythicRank: user.rankedStats.hardclassic.mythicRank,
+          wins: user.rankedStats.hardclassic.wins,
+          losses: user.rankedStats.hardclassic.losses
+        },
+        normalrnd: {
+          rank: user.rankedStats.normalrnd.rank,
+          position: user.rankedStats.normalrnd.position,
+          mythicRank: user.rankedStats.normalrnd.mythicRank,
+          wins: user.rankedStats.normalrnd.wins,
+          losses: user.rankedStats.normalrnd.losses
+        },
+        hardrnd: {
+          rank: user.rankedStats.hardrnd.rank,
+          position: user.rankedStats.hardrnd.position,
+          mythicRank: user.rankedStats.hardrnd.mythicRank,
+          wins: user.rankedStats.hardrnd.wins,
+          losses: user.rankedStats.hardrnd.losses
+        }
+      },
+      matchmaking: matchmakingStatus ? {
+        active: true,
+        mode: matchmakingStatus.mode,
+        queuedAt: matchmakingStatus.createdAt
+      } : {
+        active: false
+      },
+      activeRoom: activeRoom ? {
+        roomId: activeRoom.roomId,
+        gameType: activeRoom.gameType,
+        status: activeRoom.status,
+        playerCount: activeRoom.players.length,
+        isCreator: activeRoom.creatorId === userId
+      } : null,
+      stats: {
+        gamesPlayed: user.gamesPlayed,
+        wins: user.wins,
+        losses: user.losses
+      }
+    });
+    
+  } catch (error) {
+    console.error('Dashboard error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get matchmaking queue status (for live updates)
+app.get('/api/matchmaking/status', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    const status = await matchmakingCollection.findOne({ userId });
+    
+    if (!status) {
+      return res.json({ inQueue: false });
+    }
+    
+    // Count players in same queue
+    const queueCount = await matchmakingCollection.countDocuments({
+      mode: status.mode
+    });
+    
+    // Determine max players for this mode
+    const maxPlayers = status.mode.includes('1v1') ? 2 : 4;
+    
+    res.json({
+      inQueue: true,
+      mode: status.mode,
+      queuedAt: status.createdAt,
+      playersInQueue: queueCount,
+      maxPlayers: maxPlayers,
+      estimatedWait: queueCount >= maxPlayers ? '0-10 seconds' : '0-120 seconds'
+    });
+    
+  } catch (error) {
+    console.error('Matchmaking status error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Leave/cancel active room
+app.post('/api/room/leave', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    // Find room where user is a player
+    const room = await roomsCollection.findOne({
+      'players.userId': userId,
+      status: 'waiting'
+    });
+    
+    if (!room) {
+      return res.status(404).json({ error: 'No active room found' });
+    }
+    
+    // If user is creator, delete the room
+    if (room.creatorId === userId) {
+      await roomsCollection.deleteOne({ roomId: room.roomId });
+      
+      // Notify all players
+      io.to(`waiting_${room.roomId}`).emit('room_closed', {
+        message: 'Room has been closed by the creator'
+      });
+      
+      return res.json({ message: 'Room closed successfully' });
+    }
+    
+    // Otherwise, remove user from players array
+    await roomsCollection.updateOne(
+      { roomId: room.roomId },
+      { $pull: { players: { userId } } }
+    );
+    
+    const updatedRoom = await roomsCollection.findOne({ roomId: room.roomId });
+    
+    // Notify remaining players
+    io.to(`waiting_${room.roomId}`).emit('room_update', {
+      roomId: updatedRoom.roomId,
+      gameType: updatedRoom.gameType,
+      status: updatedRoom.status,
+      creatorId: updatedRoom.creatorId,
+      players: updatedRoom.players,
+      playerCount: updatedRoom.players.length,
+      maxPlayers: 15
+    });
+    
+    res.json({ message: 'Left room successfully' });
+    
+  } catch (error) {
+    console.error('Leave room error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Matchmaking route
 app.post('/matchmake', authenticateToken, async (req, res) => {
   try {
