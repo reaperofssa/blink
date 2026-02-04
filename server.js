@@ -412,7 +412,6 @@ async function updateUserRank(userId, mode, isWinner) {
     
     // Calculate rank change for display
     const oldRankIndex = RANK_ORDER.indexOf(currentRank);
-    const newRankIndex = RANK_ORDER.indexOf(newRank);
     
     let rankChange = 'same';
     if (newRankIndex > oldRankIndex) {
