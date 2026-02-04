@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blink - Dashboard</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        /* ============================================================
+           TOKENS - Professional Autumn Theme
+           ============================================================ */
+        :root {
+            --autumn-deep:     #0d0604;
+            --autumn-mid:      #1a0f0b;
+            --amber:           #d4883a;
+            --amber-light:     #f0a958;
+            --amber-glow:      #ff9d4a;
+            --rust:            #b33a0f;
+            --rust-dark:       #8a2d0b;
+            --rust-glow:       rgba(179, 58, 15, 0.25);
+            --orange-warm:     #e85d1c;
+            --gold:            #d4a135;
+            --text-primary:    rgba(255, 255, 255, 0.96);
+            --text-sec:        rgba(255, 255, 255, 0.68);
+            --text-dim:        rgba(255, 255, 255, 0.42);
+            --r-sm: 10px;
+            --r-md: 14px;
+            --r-lg: 20px;
+            --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.4);
+            --shadow-hard: 0 12px 48px rgba(0, 0, 0, 0.6);
+        }
+
+        /* ============================================================
+           RESET & BASE
+           ============================================================ */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: var(--autumn-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ============================================================
+           ENHANCED AUTUMN BACKGROUND
+           ============================================================ */
+        .bg-base {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background:
+                radial-gradient(ellipse 140% 60% at 50% -10%,  #4a2818 0%, transparent 55%),
+                radial-gradient(ellipse 90% 50% at 10% 80%,  #2d1510 0%, transparent 60%),
+                radial-gradient(ellipse 100% 40% at 90% 60%,  #3d1e0f 0%, transparent 55%),
+                radial-gradient(ellipse 75% 35% at 50% 100%,  #1a0c08 0%, transparent 65%),
+                linear-gradient(180deg, #2d1912 0%, #180d09 40%, #0d0604 100%);
+        }
+
+        .bg-gradient-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            opacity: 0.7;
+            background:
+                radial-gradient(ellipse 80% 30% at 50% 25%, rgba(212, 136, 58, 0.15) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 25% at 20% 70%, rgba(179, 58, 15, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse 70% 28% at 80% 50%, rgba(232, 93, 28, 0.08) 0%, transparent 55%);
+            mix-blend-mode: screen;
+        }
+
+        .bg-texture {
+            position: fixed;
+            inset: 0;
+            z-index: 2;
+            opacity: 0.03;
+            background-image: 
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px);
+            pointer-events: none;
+        }
+
+        .bg-fog {
+            position: fixed;
+            inset: 0;
+            z-index: 3;
+            pointer-events: none;
+            opacity: 0.4;
+            background:
+                radial-gradient(ellipse 100% 40% at 50% 30%, rgba(90, 50, 30, 0.15) 0%, transparent 70%),
+                radial-gradient(ellipse 80% 35% at 30% 65%, rgba(70, 40, 25, 0.12) 0%, transparent 65%);
+            animation: fogDrift 40s ease-in-out infinite alternate;
+        }
+
+        @keyframes fogDrift {
+            0% { transform: translateX(-2%) translateY(0%); }
+            100% { transform: translateX(2%) translateY(-1%); }
+        }
+
+        #leaves-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 4;
+            pointer-events: none;
+            opacity: 1;
+        }
+
+        #particles-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 3;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        /* ============================================================
+           APP SHELL
+           ============================================================ */
+        .container {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            padding: 90px 16px 24px;
+        }
+
+        /* ============================================================
+           GLOSSY GLASS EFFECT
+           ============================================================ */
+        .glass {
+            background:
+                linear-gradient(180deg,
+                    rgba(255, 255, 255, 0.14) 0%,
+                    rgba(255, 255, 255, 0.08) 10%,
+                    rgba(255, 255, 255, 0.05) 85%,
+                    rgba(255, 255, 255, 0.09) 100%
+                );
+            backdrop-filter: blur(40px) saturate(1.4);
+            -webkit-backdrop-filter: blur(40px) saturate(1.4);
+            border: 1.5px solid rgba(255, 255, 255, 0.18);
+            border-top-color: rgba(255, 255, 255, 0.28);
+            border-bottom-color: rgba(255, 255, 255, 0.08);
+            box-shadow:
+                0 1px 0 inset rgba(255, 255, 255, 0.15),
+                0 8px 32px rgba(0, 0, 0, 0.35),
+                0 16px 48px rgba(179, 58, 15, 0.1),
+                0 2px 4px rgba(0, 0, 0, 0.25);
+            border-radius: var(--r-lg);
+        }
+
+        /* ============================================================
+           GLOSSY HEADER
+           ============================================================ */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 16px;
+            z-index: 100;
+        }
+
+        .header-glass {
+            background:
+                linear-gradient(180deg,
+                    rgba(255, 255, 255, 0.16) 0%,
+                    rgba(255, 255, 255, 0.09) 50%,
+                    rgba(255, 255, 255, 0.06) 100%
+                );
+            backdrop-filter: blur(30px) saturate(1.5);
+            -webkit-backdrop-filter: blur(30px) saturate(1.5);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-top-color: rgba(255, 255, 255, 0.35);
+            border-bottom-color: rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 12px 16px;
+            box-shadow:
+                0 1px 0 inset rgba(255, 255, 255, 0.2),
+                0 8px 24px rgba(0, 0, 0, 0.3),
+                0 12px 40px rgba(179, 58, 15, 0.12);
+        }
+
+        .header-content {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-svg-wrap {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--rust), var(--amber), var(--amber-glow));
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 
+                0 4px 12px var(--rust-glow),
+                0 0 20px rgba(212, 136, 58, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-svg-wrap::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { transform: translateX(-100%); opacity: 0; }
+            50% { transform: translateX(100%); opacity: 1; }
+        }
+
+        .logo-svg-wrap svg {
+            width: 18px;
+            height: 18px;
+            position: relative;
+            z-index: 1;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+        }
+
+        .logo-text {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            color: var(--text-primary);
+            text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+
+        .logo-text .b {
+            background: linear-gradient(135deg, var(--amber-light), var(--amber-glow));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 18px;
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.16);
+            transform: scale(1.05);
+        }
+
+        /* ============================================================
+           USER BANNER CARD
+           ============================================================ */
+        .user-banner {
+            background:
+                linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.12) 0%,
+                    rgba(255, 255, 255, 0.06) 100%
+                );
+            border: 1.5px solid rgba(255, 255, 255, 0.18);
+            border-radius: var(--r-md);
+            padding: 16px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .user-banner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--rust), var(--amber), var(--amber-light));
+        }
+
+        .user-banner.premium {
+            background:
+                linear-gradient(135deg,
+                    rgba(212, 136, 58, 0.18) 0%,
+                    rgba(179, 58, 15, 0.12) 50%,
+                    rgba(255, 157, 74, 0.14) 100%
+                );
+            border: 1.5px solid rgba(255, 157, 74, 0.3);
+            box-shadow: 
+                0 4px 20px rgba(212, 136, 58, 0.25),
+                0 0 30px rgba(255, 157, 74, 0.15);
+        }
+
+        .user-banner.premium::before {
+            background: linear-gradient(90deg, 
+                var(--gold), 
+                var(--amber-glow), 
+                var(--amber-light),
+                var(--gold)
+            );
+            background-size: 200% 100%;
+            animation: gradientShift 3s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .user-info-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .user-details {
+            flex: 1;
+        }
+
+        .user-name {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            letter-spacing: -0.3px;
+        }
+
+        .user-name.premium {
+            background: linear-gradient(135deg, 
+                var(--gold), 
+                var(--amber-glow), 
+                var(--amber-light)
+            );
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 2px 8px rgba(212, 136, 58, 0.4));
+        }
+
+        .user-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+            color: var(--text-sec);
+        }
+
+        .user-tag {
+            opacity: 0.8;
+        }
+
+        .user-id {
+            opacity: 0.6;
+            font-family: 'Courier New', monospace;
+        }
+
+        .user-rank-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .rank-icon {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+        }
+
+        .rank-text {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .user-stats-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .stat-box {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 8px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--amber-light);
+            margin-bottom: 2px;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ============================================================
+           SECTION TITLES
+           ============================================================ */
+        .section {
+            margin-bottom: 28px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-sec);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 3px;
+            height: 14px;
+            background: linear-gradient(180deg, var(--amber), var(--rust));
+            border-radius: 2px;
+        }
+
+        /* ============================================================
+           MODE CARDS
+           ============================================================ */
+        .mode-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+        }
+
+        .mode-card {
+            background:
+                linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.1) 0%,
+                    rgba(255, 255, 255, 0.05) 100%
+                );
+            border: 1.5px solid rgba(255, 255, 255, 0.15);
+            border-radius: var(--r-md);
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mode-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(212, 136, 58, 0.1) 0%, transparent 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .mode-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--amber);
+            box-shadow: 0 8px 24px rgba(212, 136, 58, 0.2);
+        }
+
+        .mode-card:hover::before {
+            opacity: 1;
+        }
+
+        .mode-card:active {
+            transform: translateY(-2px) scale(0.98);
+        }
+
+        .mode-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .mode-name {
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+
+        .mode-desc {
+            font-size: 10px;
+            color: var(--text-dim);
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .mode-rank {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+        }
+
+        .mode-rank-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .mode-rank-text {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* ============================================================
+           MATCHMAKING STATUS
+           ============================================================ */
+        .matchmaking-status {
+            background:
+                linear-gradient(135deg,
+                    rgba(212, 136, 58, 0.15) 0%,
+                    rgba(179, 58, 15, 0.1) 100%
+                );
+            border: 1.5px solid rgba(212, 136, 58, 0.3);
+            border-radius: var(--r-md);
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 16px rgba(212, 136, 58, 0.15);
+        }
+
+        .mm-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .mm-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--amber-light);
+        }
+
+        .mm-cancel-btn {
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .mm-cancel-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .mm-mode {
+            font-size: 12px;
+            color: var(--text-sec);
+            margin-bottom: 8px;
+        }
+
+        .mm-progress {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mm-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-top-color: var(--amber-light);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .mm-text {
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        .mm-players {
+            font-weight: 600;
+            color: var(--amber-light);
+        }
+
+        /* ============================================================
+           QUICK ACTIONS
+           ============================================================ */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .action-card {
+            background:
+                linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.08) 0%,
+                    rgba(255, 255, 255, 0.04) 100%
+                );
+            border: 1.5px solid rgba(255, 255, 255, 0.12);
+            border-radius: var(--r-md);
+            padding: 20px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .action-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .action-icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+        }
+
+        .action-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .action-desc {
+            font-size: 10px;
+            color: var(--text-dim);
+        }
+
+        /* ============================================================
+           BUTTONS
+           ============================================================ */
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: var(--r-md);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1.5px solid rgba(255, 255, 255, 0.15);
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--rust), var(--amber), var(--amber-light));
+            border: 1.5px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 
+                0 4px 16px var(--rust-glow),
+                inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 
+                0 6px 24px var(--rust-glow),
+                0 0 32px rgba(212, 136, 58, 0.3),
+                inset 0 1px 0 rgba(255,255,255,0.3);
+            transform: translateY(-2px) scale(1.02);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ============================================================
+           MODAL
+           ============================================================ */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal {
+            background:
+                linear-gradient(180deg,
+                    rgba(255, 255, 255, 0.14) 0%,
+                    rgba(255, 255, 255, 0.08) 100%
+                );
+            backdrop-filter: blur(40px);
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            border-radius: var(--r-lg);
+            padding: 24px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .modal-subtitle {
+            font-size: 13px;
+            color: var(--text-sec);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-sec);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 13px 15px;
+            border: 1.5px solid rgba(255, 255, 255, 0.15);
+            border-radius: var(--r-sm);
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(12px);
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            border-color: var(--amber);
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 0 4px rgba(212, 136, 58, 0.15);
+        }
+
+        .select-field {
+            width: 100%;
+            padding: 13px 15px;
+            border: 1.5px solid rgba(255, 255, 255, 0.15);
+            border-radius: var(--r-sm);
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 560px) {
+            .mode-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .quick-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-base"></div>
+    <div class="bg-gradient-layer"></div>
+    <div class="bg-texture"></div>
+    <div class="bg-fog"></div>
+    <canvas id="particles-canvas"></canvas>
+    <canvas id="leaves-canvas"></canvas>
+
+    <!-- Glossy Header -->
+    <div class="header">
+        <div class="header-glass">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-svg-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M2 17L12 22L22 17" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div class="logo-text"><span class="b">Blink</span></div>
+                </div>
+                <div class="header-actions">
+                    <div class="icon-btn" onclick="goToLeaderboard()">🏆</div>
+                    <div class="icon-btn" onclick="goToProfile()">👤</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- User Banner -->
+        <div class="user-banner" id="userBanner">
+            <div class="user-info-row">
+                <div class="user-details">
+                    <div class="user-name" id="userName">Loading...</div>
+                    <div class="user-meta">
+                        <span class="user-tag" id="userTag">@...</span>
+                        <span class="user-id" id="userId">#...</span>
+                    </div>
+                </div>
+                <div class="user-rank-badge">
+                    <img src="./ranks/bronze.png" alt="Rank" class="rank-icon" id="rankIcon">
+                    <div class="rank-text" id="rankText">Bronze</div>
+                </div>
+            </div>
+            <div class="user-stats-row">
+                <div class="stat-box">
+                    <div class="stat-value" id="userPoints">0</div>
+                    <div class="stat-label">Points</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="userCoins">0</div>
+                    <div class="stat-label">Coins</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="userLevel">1</div>
+                    <div class="stat-label">Level</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Matchmaking Status -->
+        <div class="matchmaking-status hidden" id="matchmakingStatus">
+            <div class="mm-header">
+                <div class="mm-title">🔍 Finding Match...</div>
+                <button class="mm-cancel-btn" onclick="cancelMatchmaking()">Cancel</button>
+            </div>
+            <div class="mm-mode" id="mmMode">Mode: Normal Classic (1v1)</div>
+            <div class="mm-progress">
+                <div class="mm-spinner"></div>
+                <div class="mm-text">Players: <span class="mm-players" id="mmPlayers">1/2</span></div>
+            </div>
+        </div>
+
+        <!-- Ranked Modes -->
+        <div class="section">
+            <div class="section-title">⚔️ Ranked Modes</div>
+            <div class="mode-grid">
+                <div class="mode-card" onclick="selectMode('normalclassic', 2)">
+                    <div class="mode-icon">🎯</div>
+                    <div class="mode-name">Classic</div>
+                    <div class="mode-desc">Normal • 1v1</div>
+                    <div class="mode-rank">
+                        <img src="./ranks/bronze.png" class="mode-rank-icon" id="rank-normalclassic">
+                        <div class="mode-rank-text" id="ranktext-normalclassic">Bronze</div>
+                    </div>
+                </div>
+
+                <div class="mode-card" onclick="selectMode('normalclassic', 4)">
+                    <div class="mode-icon">👥</div>
+                    <div class="mode-name">Classic 4P</div>
+                    <div class="mode-desc">Normal • 4 Players</div>
+                    <div class="mode-rank">
+                        <img src="./ranks/bronze.png" class="mode-rank-icon" id="rank-normalclassic-4">
+                        <div class="mode-rank-text" id="ranktext-normalclassic-4">Bronze</div>
+                    </div>
+                </div>
+
+                <div class="mode-card" onclick="selectMode('hardclassic', 2)">
+                    <div class="mode-icon">🔥</div>
+                    <div class="mode-name">Hard Classic</div>
+                    <div class="mode-desc">Hard • 1v1</div>
+                    <div class="mode-rank">
+                        <img src="./ranks/bronze.png" class="mode-rank-icon" id="rank-hardclassic">
+                        <div class="mode-rank-text" id="ranktext-hardclassic">Bronze</div>
+                    </div>
+                </div>
+
+                <div class="mode-card" onclick="selectMode('hardclassic', 4)">
+                    <div class="mode-icon">💀</div>
+                    <div class="mode-name">Hard 4P</div>
+                    <div class="mode-desc">Hard • 4 Players</div>
+                    <div class="mode-rank">
+                        <img src="./ranks/bronze.png" class="mode-rank-icon" id="rank-hardclassic-4">
+                        <div class="mode-rank-text" id="ranktext-hardclassic-4">Bronze</div>
+                    </div>
+                </div>
+
+                <div class="mode-card" onclick="selectMode('normalrnd', 2)">
+                    <div class="mode-icon">🎲</div>
+                    <div class="mode-name">Random</div>
+                    <div class="mode-desc">Normal • 1v1</div>
+                    <div class="mode-rank">
+                        <img src="./ranks/bronze.png" class="mode-rank-icon" id="rank-normalrnd">
+                        <div class="mode-rank-text" id="ranktext-normalrnd">Bronze</div>
+                    </div>
+                </div>
+
+                <div class="mode-card" onclick="selectMode('normalrnd', 4)">
+                    <div class="mode-icon">🌀</div>
+                    <div class="mode-name">Random 4P</div>
+                    <div class="mode-desc">Normal • 4 Players</div>
+                    <div class="mode-rank">
+                        <img src="./ranks/bronze.png" class="mode-rank-icon" id="rank-normalrnd-4">
+                        <div class="mode-rank-text" id="ranktext-normalrnd-4">Bronze</div>
+                    </div>
+                </div>
+
+                <div class="mode-card" onclick="selectMode('hardrnd', 2)">
+                    <div class="mode-icon">⚡</div>
+                    <div class="mode-name">Hard Random</div>
+                    <div class="mode-desc">Hard • 1v1</div>
+                    <div class="mode-rank">
+                        <img src="./ranks/bronze.png" class="mode-rank-icon" id="rank-hardrnd">
+                        <div class="mode-rank-text" id="ranktext-hardrnd">Bronze</div>
+                    </div>
+                </div>
+
+                <div class="mode-card" onclick="selectMode('hardrnd', 4)">
+                    <div class="mode-icon">🌪️</div>
+                    <div class="mode-name">Hard Random 4P</div>
+                    <div class="mode-desc">Hard • 4 Players</div>
+                    <div class="mode-rank">
+                        <img src="./ranks/bronze.png" class="mode-rank-icon" id="rank-hardrnd-4">
+                        <div class="mode-rank-text" id="ranktext-hardrnd-4">Bronze</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="section">
+            <div class="section-title">⚡ Quick Actions</div>
+            <div class="quick-actions">
+                <div class="action-card" onclick="openCreateRoom()">
+                    <div class="action-icon">🏠</div>
+                    <div class="action-title">Create Room</div>
+                    <div class="action-desc">Private game</div>
+                </div>
+
+                <div class="action-card" onclick="openJoinRoom()">
+                    <div class="action-icon">🔗</div>
+                    <div class="action-title">Join Room</div>
+                    <div class="action-desc">Enter code</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Room Modal -->
+    <div class="modal-overlay" id="createModal">
+        <div class="modal">
+            <div class="modal-title">Create Private Room</div>
+            <div class="modal-subtitle">Invite friends to play</div>
+            
+            <div class="input-group">
+                <label class="input-label">Game Mode</label>
+                <select class="select-field" id="createGameType">
+                    <option value="normalclassic">Normal Classic</option>
+                    <option value="hardclassic">Hard Classic</option>
+                    <option value="normalrnd">Normal Random</option>
+                    <option value="hardrnd">Hard Random</option>
+                </select>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn" onclick="closeCreateRoom()">Cancel</button>
+                <button class="btn btn-primary" onclick="createRoom()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Join Room Modal -->
+    <div class="modal-overlay" id="joinModal">
+        <div class="modal">
+            <div class="modal-title">Join Private Room</div>
+            <div class="modal-subtitle">Enter room code</div>
+            
+            <div class="input-group">
+                <label class="input-label">Room Code</label>
+                <input type="text" class="input-field" id="joinRoomCode" placeholder="123456" maxlength="6">
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn" onclick="closeJoinRoom()">Cancel</button>
+                <button class="btn btn-primary" onclick="joinRoom()">Join</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://blink.zone.id';
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+
+        let authToken = null;
+        let userData = null;
+        let matchmakingInterval = null;
+
+        // ============================================================
+        // AUTUMN BACKGROUND ANIMATION (Same as connect page)
+        // ============================================================
+        (function() {
+            const particlesCanvas = document.getElementById('particles-canvas');
+            const leavesCanvas = document.getElementById('leaves-canvas');
+            const particlesCtx = particlesCanvas.getContext('2d', { alpha: true });
+            const leavesCtx = leavesCanvas.getContext('2d', { alpha: true });
+
+            let W, H;
+
+            function resize() {
+                W = window.innerWidth;
+                H = window.innerHeight;
+                particlesCanvas.width = W;
+                particlesCanvas.height = H;
+                leavesCanvas.width = W;
+                leavesCanvas.height = H;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            // Particles
+            let particles = [];
+            for (let i = 0; i < 30; i++) {
+                particles.push({
+                    x: Math.random() * W,
+                    y: Math.random() * H,
+                    size: 1 + Math.random() * 2,
+                    vx: (Math.random() - 0.5) * 0.3,
+                    vy: -0.2 - Math.random() * 0.4,
+                    alpha: 0.2 + Math.random() * 0.4,
+                    color: Math.random() > 0.5 ? '#d4883a' : '#b33a0f'
+                });
+            }
+
+            // Leaves
+            const LEAF_COLORS = [
+                { base: '#b33a0f', shade: '#8a2d0b', highlight: '#d4491a' },
+                { base: '#c1440e', shade: '#9a3608', highlight: '#e85d1c' },
+                { base: '#d4883a', shade: '#b06d2a', highlight: '#f0a958' },
+                { base: '#a0522d', shade: '#7d3f20', highlight: '#c76b3f' },
+                { base: '#8b6914', shade: '#6d520f', highlight: '#b08a1e' },
+                { base: '#c97b3a', shade: '#a25f28', highlight: '#e89b50' },
+                { base: '#d2691e', shade: '#a85217', highlight: '#f0872d' },
+                { base: '#cd853f', shade: '#a66930', highlight: '#e8a566' }
+            ];
+
+            let leaves = [];
+            for (let i = 0; i < 40; i++) {
+                leaves.push(createLeaf());
+            }
+
+            function createLeaf() {
+                const colorSet = LEAF_COLORS[Math.floor(Math.random() * LEAF_COLORS.length)];
+                return {
+                    x: Math.random() * W,
+                    y: -50 - Math.random() * H * 0.5,
+                    size: 8 + Math.random() * 16,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.06,
+                    vx: (Math.random() - 0.5) * 1.2,
+                    vy: 0.5 + Math.random() * 1.2,
+                    sway: Math.random() * Math.PI * 2,
+                    swaySpeed: 1 + Math.random() * 2,
+                    colorSet: colorSet,
+                    alpha: 0.6 + Math.random() * 0.4,
+                    leafType: Math.floor(Math.random() * 3),
+                    spin: Math.random() * 2,
+                    wobble: Math.random() * 0.5
+                };
+            }
+
+            function drawLeaf(ctx, leaf, time) {
+                ctx.save();
+                ctx.translate(leaf.x, leaf.y);
+                ctx.rotate(leaf.rotation);
+                
+                const perspective = 0.4 + 0.6 * Math.abs(Math.sin(time * leaf.spin + leaf.sway));
+                ctx.scale(perspective, 1);
+                
+                ctx.globalAlpha = leaf.alpha;
+                const s = leaf.size;
+
+                if (leaf.leafType === 0) {
+                    ctx.fillStyle = leaf.colorSet.base;
+                    ctx.beginPath();
+                    ctx.moveTo(0, s * 0.5);
+                    ctx.bezierCurveTo(s * 0.15, s * 0.35, s * 0.3, s * 0.3, s * 0.3, s * 0.15);
+                    ctx.bezierCurveTo(s * 0.35, s * 0.1, s * 0.35, 0, s * 0.25, -s * 0.1);
+                    ctx.bezierCurveTo(s * 0.15, -s * 0.2, s * 0.1, -s * 0.3, 0, -s * 0.35);
+                    ctx.bezierCurveTo(-s * 0.1, -s * 0.3, -s * 0.15, -s * 0.2, -s * 0.25, -s * 0.1);
+                    ctx.bezierCurveTo(-s * 0.35, 0, -s * 0.35, s * 0.1, -s * 0.3, s * 0.15);
+                    ctx.bezierCurveTo(-s * 0.3, s * 0.3, -s * 0.15, s * 0.35, 0, s * 0.5);
+                    ctx.closePath();
+                    ctx.fill();
+                } else if (leaf.leafType === 1) {
+                    ctx.fillStyle = leaf.colorSet.base;
+                    ctx.beginPath();
+                    ctx.moveTo(0, s * 0.45);
+                    ctx.lineTo(-s * 0.05, s * 0.15);
+                    ctx.bezierCurveTo(-s * 0.25, s * 0.25, -s * 0.4, s * 0.15, -s * 0.45, 0);
+                    ctx.bezierCurveTo(-s * 0.4, -s * 0.1, -s * 0.3, -s * 0.15, -s * 0.15, -s * 0.1);
+                    ctx.bezierCurveTo(-s * 0.2, -s * 0.25, -s * 0.1, -s * 0.4, 0, -s * 0.5);
+                    ctx.bezierCurveTo(s * 0.1, -s * 0.4, s * 0.2, -s * 0.25, s * 0.15, -s * 0.1);
+                    ctx.bezierCurveTo(s * 0.3, -s * 0.15, s * 0.4, -s * 0.1, s * 0.45, 0);
+                    ctx.bezierCurveTo(s * 0.4, s * 0.15, s * 0.25, s * 0.25, s * 0.05, s * 0.15);
+                    ctx.closePath();
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = leaf.colorSet.base;
+                    ctx.beginPath();
+                    ctx.moveTo(0, s * 0.5);
+                    ctx.bezierCurveTo(s * 0.1, s * 0.3, s * 0.25, s * 0.25, s * 0.25, s * 0.15);
+                    ctx.bezierCurveTo(s * 0.3, s * 0.05, s * 0.3, -s * 0.05, s * 0.25, -s * 0.15);
+                    ctx.bezierCurveTo(s * 0.15, -s * 0.25, s * 0.1, -s * 0.35, 0, -s * 0.4);
+                    ctx.bezierCurveTo(-s * 0.1, -s * 0.35, -s * 0.15, -s * 0.25, -s * 0.25, -s * 0.15);
+                    ctx.bezierCurveTo(-s * 0.3, -s * 0.05, -s * 0.3, s * 0.05, -s * 0.25, s * 0.15);
+                    ctx.bezierCurveTo(-s * 0.25, s * 0.25, -s * 0.1, s * 0.3, 0, s * 0.5);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+
+            let time = 0;
+            function animate() {
+                requestAnimationFrame(animate);
+                time += 0.016;
+
+                particlesCtx.clearRect(0, 0, W, H);
+                leavesCtx.clearRect(0, 0, W, H);
+
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    
+                    if (p.y < -10 || p.x < -10 || p.x > W + 10) {
+                        p.x = Math.random() * W;
+                        p.y = H + 10;
+                    }
+
+                    particlesCtx.save();
+                    particlesCtx.globalAlpha = p.alpha;
+                    particlesCtx.fillStyle = p.color;
+                    particlesCtx.shadowBlur = 8;
+                    particlesCtx.shadowColor = p.color;
+                    particlesCtx.beginPath();
+                    particlesCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    particlesCtx.fill();
+                    particlesCtx.restore();
+                });
+
+                leaves.forEach((leaf, i) => {
+                    leaf.sway += leaf.swaySpeed * 0.016;
+                    const wind = Math.sin(time * 0.5 + leaf.sway) * 1.2;
+                    
+                    leaf.x += leaf.vx + wind * leaf.wobble;
+                    leaf.y += leaf.vy;
+                    leaf.rotation += leaf.rotationSpeed + Math.sin(time * leaf.spin) * 0.03;
+
+                    if (leaf.y > H * 0.85) {
+                        leaf.alpha -= 0.005;
+                    }
+
+                    drawLeaf(leavesCtx, leaf, time);
+
+                    if (leaf.y > H + 50 || leaf.alpha <= 0 || leaf.x < -50 || leaf.x > W + 50) {
+                        Object.assign(leaf, createLeaf());
+                    }
+                });
+
+                if (leaves.length < 50 && Math.random() < 0.02) {
+                    leaves.push(createLeaf());
+                }
+            }
+
+            animate();
+        })();
+
+        // ============================================================
+        // INITIALIZATION
+        // ============================================================
+        async function init() {
+            try {
+                // Get auth token from cookie
+                authToken = getCookie('authToken');
+                
+                if (!authToken) {
+                    window.location.href = 'connect.html';
+                    return;
+                }
+
+                // Load dashboard data
+                await loadDashboard();
+                
+                // Check for active matchmaking
+                await checkMatchmakingStatus();
+                
+            } catch (error) {
+                console.error('Init error:', error);
+            }
+        }
+
+        async function loadDashboard() {
+            try {
+                const response = await fetch(`${API_URL}/api/dashboard`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                userData = data;
+
+                // Update user banner
+                document.getElementById('userName').textContent = data.user.playerName;
+                document.getElementById('userTag').textContent = `@${data.user.playerTag}`;
+                document.getElementById('userId').textContent = `#${data.user.userId}`;
+                document.getElementById('userPoints').textContent = data.user.points;
+                document.getElementById('userCoins').textContent = data.user.coins;
+                document.getElementById('userLevel').textContent = data.user.level;
+
+                // Premium styling
+                if (data.user.premium) {
+                    document.getElementById('userBanner').classList.add('premium');
+                    document.getElementById('userName').classList.add('premium');
+                }
+
+                // Update main rank (normalclassic)
+                updateRankBadge(data.ranks.normalclassic);
+
+                // Update all mode ranks
+                updateModeRank('normalclassic', data.ranks.normalclassic);
+                updateModeRank('hardclassic', data.ranks.hardclassic);
+                updateModeRank('normalrnd', data.ranks.normalrnd);
+                updateModeRank('hardrnd', data.ranks.hardrnd);
+
+            } catch (error) {
+                console.error('Load dashboard error:', error);
+            }
+        }
+
+        function updateRankBadge(rankData) {
+            const rankIcon = document.getElementById('rankIcon');
+            const rankText = document.getElementById('rankText');
+            
+            rankIcon.src = `./ranks/${rankData.rank}.png`;
+            
+            if (rankData.rank === 'mythic') {
+                rankText.textContent = `Mythic ${rankData.mythicRank}`;
+            } else {
+                rankText.textContent = rankData.rank.charAt(0).toUpperCase() + rankData.rank.slice(1);
+            }
+        }
+
+        function updateModeRank(mode, rankData) {
+            const icon = document.getElementById(`rank-${mode}`);
+            const text = document.getElementById(`ranktext-${mode}`);
+            const icon4 = document.getElementById(`rank-${mode}-4`);
+            const text4 = document.getElementById(`ranktext-${mode}-4`);
+            
+            if (icon) {
+                icon.src = `./ranks/${rankData.rank}.png`;
+                if (icon4) icon4.src = `./ranks/${rankData.rank}.png`;
+            }
+            
+            if (text) {
+                if (rankData.rank === 'mythic') {
+                    text.textContent = `Mythic ${rankData.mythicRank}`;
+                    if (text4) text4.textContent = `Mythic ${rankData.mythicRank}`;
+                } else {
+                    text.textContent = rankData.rank.charAt(0).toUpperCase() + rankData.rank.slice(1);
+                    if (text4) text4.textContent = rankData.rank.charAt(0).toUpperCase() + rankData.rank.slice(1);
+                }
+            }
+        }
+
+        async function checkMatchmakingStatus() {
+            try {
+                const response = await fetch(`${API_URL}/api/matchmaking/status`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (data.inQueue) {
+                    showMatchmakingStatus(data);
+                    startMatchmakingPolling();
+                }
+            } catch (error) {
+                console.error('Check matchmaking error:', error);
+            }
+        }
+
+        function showMatchmakingStatus(data) {
+            const status = document.getElementById('matchmakingStatus');
+            const mode = document.getElementById('mmMode');
+            const players = document.getElementById('mmPlayers');
+
+            const modeNames = {
+                'normalclassic_1v1': 'Normal Classic (1v1)',
+                'normalclassic_4player': 'Normal Classic (4 Players)',
+                'hardclassic_1v1': 'Hard Classic (1v1)',
+                'hardclassic_4player': 'Hard Classic (4 Players)',
+                'normalrnd_1v1': 'Normal Random (1v1)',
+                'normalrnd_4player': 'Normal Random (4 Players)',
+                'hardrnd_1v1': 'Hard Random (1v1)',
+                'hardrnd_4player': 'Hard Random (4 Players)'
+            };
+
+            mode.textContent = `Mode: ${modeNames[data.mode] || data.mode}`;
+            players.textContent = `${data.playersInQueue}/${data.maxPlayers}`;
+            status.classList.remove('hidden');
+        }
+
+        function startMatchmakingPolling() {
+            if (matchmakingInterval) return;
+
+            matchmakingInterval = setInterval(async () => {
+                await checkMatchmakingStatus();
+            }, 2000);
+        }
+
+        function stopMatchmakingPolling() {
+            if (matchmakingInterval) {
+                clearInterval(matchmakingInterval);
+                matchmakingInterval = null;
+            }
+        }
+
+        // ============================================================
+        // MATCHMAKING
+        // ============================================================
+        async function selectMode(mode, playerCount) {
+            try {
+                const response = await fetch(`${API_URL}/matchmake`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ mode, playerCount })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMatchmakingStatus({ 
+                        mode: `${mode}_${playerCount === 2 ? '1v1' : '4player'}`,
+                        playersInQueue: 1,
+                        maxPlayers: playerCount
+                    });
+                    startMatchmakingPolling();
+                } else {
+                    alert(data.error);
+                }
+            } catch (error) {
+                console.error('Matchmaking error:', error);
+                alert('Failed to join matchmaking');
+            }
+        }
+
+        async function cancelMatchmaking() {
+            try {
+                await fetch(`${API_URL}/matchmake/cancel`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    credentials: 'include'
+                });
+
+                document.getElementById('matchmakingStatus').classList.add('hidden');
+                stopMatchmakingPolling();
+            } catch (error) {
+                console.error('Cancel matchmaking error:', error);
+            }
+        }
+
+        // ============================================================
+        // ROOM MANAGEMENT
+        // ============================================================
+        function openCreateRoom() {
+            document.getElementById('createModal').classList.add('active');
+        }
+
+        function closeCreateRoom() {
+            document.getElementById('createModal').classList.remove('active');
+        }
+
+        async function createRoom() {
+            const gameType = document.getElementById('createGameType').value;
+
+            try {
+                const response = await fetch(`${API_URL}/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ gameType })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    window.location.href = `waiting.html?roomId=${data.room.roomId}`;
+                } else {
+                    alert(data.error);
+                }
+            } catch (error) {
+                console.error('Create room error:', error);
+                alert('Failed to create room');
+            }
+        }
+
+        function openJoinRoom() {
+            document.getElementById('joinModal').classList.add('active');
+        }
+
+        function closeJoinRoom() {
+            document.getElementById('joinModal').classList.remove('active');
+        }
+
+        async function joinRoom() {
+            const roomId = document.getElementById('joinRoomCode').value.trim();
+
+            if (!roomId) {
+                alert('Please enter a room code');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/join`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ roomId })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    window.location.href = `waiting.html?roomId=${roomId}`;
+                } else {
+                    alert(data.error);
+                }
+            } catch (error) {
+                console.error('Join room error:', error);
+                alert('Failed to join room');
+            }
+        }
+
+        // ============================================================
+        // NAVIGATION
+        // ============================================================
+        function goToLeaderboard() {
+            window.location.href = 'leaderboard.html';
+        }
+
+        function goToProfile() {
+            if (userData) {
+                window.location.href = `profile.html?userId=${userData.user.userId}`;
+            }
+        }
+
+        // ============================================================
+        // UTILITIES
+        // ============================================================
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        // Start app
+        init();
+    </script>
+</body>
+</html>
