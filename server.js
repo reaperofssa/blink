@@ -1218,6 +1218,78 @@ app.post('/api/room/leave', authenticateToken, async (req, res) => {
   }
 });
 
+// Get rank progress for current user
+app.get('/api/rank-progress/:mode', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const mode = req.params.mode;
+    
+    // Validate mode
+    const validModes = ['normalclassic', 'hardclassic', 'normalrnd', 'hardrnd'];
+    if (!validModes.includes(mode)) {
+      return res.status(400).json({ error: 'Invalid mode' });
+    }
+    
+    const user = await usersCollection.findOne({ userId });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const rankData = user.rankedStats[mode];
+    const currentRank = rankData.rank;
+    const currentWins = rankData.wins;
+    const currentPosition = rankData.position;
+    const currentMythicRank = rankData.mythicRank || 0;
+    
+    // Calculate progress to next rank
+    let nextRank = null;
+    let winsToNextRank = 0;
+    let progressPercentage = 0;
+    let totalWinsNeeded = 0;
+    
+    const rankIndex = RANK_ORDER.indexOf(currentRank);
+    
+    if (currentRank === 'mythic') {
+      // Mythic has infinite progression
+      nextRank = 'mythic';
+      winsToNextRank = 1; // Always 1 win to next mythic level
+      progressPercentage = 0; // Always ready to progress
+      totalWinsNeeded = 1;
+    } else {
+      // Get next rank
+      nextRank = RANK_ORDER[rankIndex + 1];
+      
+      if (nextRank) {
+        const currentRankSystem = RANK_SYSTEM[currentRank];
+        const winsInCurrentRank = currentWins - RANK_SYSTEM[currentRank].minWins;
+        
+        winsToNextRank = currentRankSystem.winsRequired - winsInCurrentRank;
+        totalWinsNeeded = currentRankSystem.winsRequired;
+        progressPercentage = Math.floor((winsInCurrentRank / totalWinsNeeded) * 100);
+      }
+    }
+    
+    res.json({
+      mode,
+      currentRank,
+      currentPosition,
+      currentMythicRank,
+      currentWins,
+      losses: rankData.losses,
+      nextRank,
+      winsToNextRank,
+      progressPercentage,
+      totalWinsNeeded,
+      canRankUp: winsToNextRank === 0
+    });
+    
+  } catch (error) {
+    console.error('Rank progress error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Matchmaking route
 app.post('/matchmake', authenticateToken, async (req, res) => {
   try {
