@@ -1,1 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blink - Connect</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        /* ============================================================
+           TOKENS - Professional Autumn Theme
+           ============================================================ */
+        :root {
+            --autumn-deep:     #0d0604;
+            --autumn-mid:      #1a0f0b;
+            --amber:           #d4883a;
+            --amber-light:     #f0a958;
+            --amber-glow:      #ff9d4a;
+            --rust:            #b33a0f;
+            --rust-dark:       #8a2d0b;
+            --rust-glow:       rgba(179, 58, 15, 0.25);
+            --orange-warm:     #e85d1c;
+            --gold:            #d4a135;
+            --text-primary:    rgba(255, 255, 255, 0.96);
+            --text-sec:        rgba(255, 255, 255, 0.68);
+            --text-dim:        rgba(255, 255, 255, 0.42);
+            --r-sm: 10px;
+            --r-md: 14px;
+            --r-lg: 20px;
+            --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.4);
+            --shadow-hard: 0 12px 48px rgba(0, 0, 0, 0.6);
+        }
 
+        /* ============================================================
+           RESET & BASE
+           ============================================================ */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: var(--autumn-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ============================================================
+           ENHANCED AUTUMN BACKGROUND - Multi-layered Depth
+           ============================================================ */
+        .bg-base {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background:
+                radial-gradient(ellipse 140% 60% at 50% -10%,  #4a2818 0%, transparent 55%),
+                radial-gradient(ellipse 90% 50% at 10% 80%,  #2d1510 0%, transparent 60%),
+                radial-gradient(ellipse 100% 40% at 90% 60%,  #3d1e0f 0%, transparent 55%),
+                radial-gradient(ellipse 75% 35% at 50% 100%,  #1a0c08 0%, transparent 65%),
+                linear-gradient(180deg, #2d1912 0%, #180d09 40%, #0d0604 100%);
+        }
+
+        .bg-gradient-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            opacity: 0.7;
+            background:
+                radial-gradient(ellipse 80% 30% at 50% 25%, rgba(212, 136, 58, 0.15) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 25% at 20% 70%, rgba(179, 58, 15, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse 70% 28% at 80% 50%, rgba(232, 93, 28, 0.08) 0%, transparent 55%);
+            mix-blend-mode: screen;
+        }
+
+        .bg-texture {
+            position: fixed;
+            inset: 0;
+            z-index: 2;
+            opacity: 0.03;
+            background-image: 
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px);
+            pointer-events: none;
+        }
+
+        /* Atmospheric fog/smoke layer */
+        .bg-fog {
+            position: fixed;
+            inset: 0;
+            z-index: 3;
+            pointer-events: none;
+            opacity: 0.4;
+            background:
+                radial-gradient(ellipse 100% 40% at 50% 30%, rgba(90, 50, 30, 0.15) 0%, transparent 70%),
+                radial-gradient(ellipse 80% 35% at 30% 65%, rgba(70, 40, 25, 0.12) 0%, transparent 65%);
+            animation: fogDrift 40s ease-in-out infinite alternate;
+        }
+
+        @keyframes fogDrift {
+            0% { transform: translateX(-2%) translateY(0%); }
+            100% { transform: translateX(2%) translateY(-1%); }
+        }
+
+        /* ============================================================
+           CANVAS LAYERS - Enhanced Visibility
+           ============================================================ */
+        #leaves-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 4;
+            pointer-events: none;
+            opacity: 1;
+        }
+
+        #particles-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 3;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        /* ============================================================
+           APP SHELL
+           ============================================================ */
+        .container {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+        }
+
+        /* ============================================================
+           PREMIUM GLASS EFFECT
+           ============================================================ */
+        .glass {
+            background:
+                linear-gradient(180deg,
+                    rgba(255, 255, 255, 0.14) 0%,
+                    rgba(255, 255, 255, 0.08) 10%,
+                    rgba(255, 255, 255, 0.05) 85%,
+                    rgba(255, 255, 255, 0.09) 100%
+                );
+            backdrop-filter: blur(40px) saturate(1.4);
+            -webkit-backdrop-filter: blur(40px) saturate(1.4);
+            border: 1.5px solid rgba(255, 255, 255, 0.18);
+            border-top-color: rgba(255, 255, 255, 0.28);
+            border-bottom-color: rgba(255, 255, 255, 0.08);
+            box-shadow:
+                0 1px 0 inset rgba(255, 255, 255, 0.15),
+                0 8px 32px rgba(0, 0, 0, 0.35),
+                0 16px 48px rgba(179, 58, 15, 0.1),
+                0 2px 4px rgba(0, 0, 0, 0.25);
+            border-radius: var(--r-lg);
+        }
+
+        /* ============================================================
+           HEADER - Enhanced
+           ============================================================ */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 14px 18px;
+            z-index: 100;
+            background: linear-gradient(180deg, 
+                rgba(13, 6, 4, 0.95) 0%, 
+                rgba(13, 6, 4, 0.7) 70%,
+                transparent 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .header-content {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-svg-wrap {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--rust), var(--amber), var(--amber-glow));
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 
+                0 4px 12px var(--rust-glow),
+                0 0 20px rgba(212, 136, 58, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-svg-wrap::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { transform: translateX(-100%); opacity: 0; }
+            50% { transform: translateX(100%); opacity: 1; }
+        }
+
+        .logo-svg-wrap svg {
+            width: 18px;
+            height: 18px;
+            position: relative;
+            z-index: 1;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+        }
+
+        .logo-text {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            color: var(--text-primary);
+            text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+
+        .logo-text .b {
+            background: linear-gradient(135deg, var(--amber-light), var(--amber-glow));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .site-subtitle {
+            font-size: 11px;
+            color: var(--text-dim);
+            font-weight: 500;
+            opacity: 0.8;
+        }
+
+        /* ============================================================
+           MAIN CARD - Enhanced
+           ============================================================ */
+        .card {
+            width: 94%;
+            max-width: 420px;
+            margin-top: 80px;
+            padding: 32px 28px 28px;
+            position: relative;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40%;
+            height: 3px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                var(--amber) 50%, 
+                transparent 100%);
+            border-radius: 0 0 2px 2px;
+            opacity: 0.6;
+        }
+
+        .welcome-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            text-align: center;
+            letter-spacing: -0.4px;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+        }
+
+        .welcome-subtitle {
+            font-size: 13px;
+            color: var(--text-sec);
+            text-align: center;
+            margin-bottom: 28px;
+            line-height: 1.5;
+        }
+
+        /* ============================================================
+           ENHANCED PROGRESS INDICATOR
+           ============================================================ */
+        .progress-container {
+            margin-bottom: 28px;
+        }
+
+        .progress-dots {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+
+        .dot.active {
+            background: linear-gradient(135deg, var(--amber), var(--amber-light));
+            width: 24px;
+            border-radius: 5px;
+            box-shadow: 
+                0 0 12px var(--rust-glow),
+                0 0 24px rgba(212, 136, 58, 0.3);
+        }
+
+        .dot.completed {
+            background: linear-gradient(135deg, var(--gold), var(--amber-light));
+            box-shadow: 0 0 8px rgba(212, 161, 53, 0.4);
+        }
+
+        .dot.completed::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 8px;
+            font-weight: bold;
+            color: var(--autumn-deep);
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--rust), var(--amber), var(--amber-light));
+            border-radius: 10px;
+            transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 0 12px rgba(212, 136, 58, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255,255,255,0.4) 50%, 
+                transparent 100%);
+            animation: progressShine 2s ease-in-out infinite;
+        }
+
+        @keyframes progressShine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(200%); }
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 8px;
+            font-weight: 500;
+        }
+
+        /* ============================================================
+           BUTTONS - Enhanced
+           ============================================================ */
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: var(--r-md);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1.5px solid rgba(255, 255, 255, 0.15);
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            position: relative;
+            overflow: hidden;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        .btn:hover::before {
+            transform: translateX(100%);
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.16);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn:active {
+            transform: scale(0.98) translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--rust), var(--amber), var(--amber-light));
+            border: 1.5px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 
+                0 4px 16px var(--rust-glow),
+                0 2px 8px rgba(0,0,0,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 
+                0 6px 24px var(--rust-glow),
+                0 0 32px rgba(212, 136, 58, 0.3),
+                inset 0 1px 0 rgba(255,255,255,0.3);
+            transform: translateY(-2px) scale(1.02);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ============================================================
+           INPUT FIELDS - Enhanced
+           ============================================================ */
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-sec);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 13px 15px;
+            border: 1.5px solid rgba(255, 255, 255, 0.15);
+            border-radius: var(--r-sm);
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .input-field::placeholder {
+            color: var(--text-dim);
+        }
+
+        .input-field:focus {
+            border-color: var(--amber);
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 
+                0 0 0 4px rgba(212, 136, 58, 0.15),
+                inset 0 2px 4px rgba(0,0,0,0.1),
+                0 4px 12px rgba(212, 136, 58, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .input-hint {
+            font-size: 10.5px;
+            color: var(--text-dim);
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .input-hint::before {
+            content: 'ℹ️';
+            font-size: 10px;
+        }
+
+        .input-error {
+            font-size: 11px;
+            color: #ff6b7a;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            animation: shake 0.4s ease;
+        }
+
+        .input-error::before {
+            content: '⚠️';
+            font-size: 11px;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+
+        /* Character counter */
+        .char-counter {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 10px;
+            color: var(--text-dim);
+            pointer-events: none;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        /* ============================================================
+           ENHANCED LOADING ANIMATION
+           ============================================================ */
+        .spinner-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .spinner {
+            position: relative;
+            width: 50px;
+            height: 50px;
+            display: inline-block;
+        }
+
+        .spinner-leaf {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: linear-gradient(135deg, var(--rust), var(--amber));
+            border-radius: 3px 12px 3px 12px;
+            animation: leafSpin 2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+            box-shadow: 0 2px 8px rgba(179, 58, 15, 0.4);
+        }
+
+        .spinner-leaf:nth-child(1) {
+            top: 0;
+            left: 50%;
+            transform-origin: center 25px;
+            animation-delay: 0s;
+            background: linear-gradient(135deg, #c1440e, #e85d1c);
+        }
+
+        .spinner-leaf:nth-child(2) {
+            top: 50%;
+            right: 0;
+            transform-origin: -25px center;
+            animation-delay: -0.25s;
+            background: linear-gradient(135deg, #d4883a, #f0a958);
+        }
+
+        .spinner-leaf:nth-child(3) {
+            bottom: 0;
+            left: 50%;
+            transform-origin: center -25px;
+            animation-delay: -0.5s;
+            background: linear-gradient(135deg, #b33a0f, #d4491a);
+        }
+
+        .spinner-leaf:nth-child(4) {
+            top: 50%;
+            left: 0;
+            transform-origin: 25px center;
+            animation-delay: -0.75s;
+            background: linear-gradient(135deg, #d4a135, #f0c968);
+        }
+
+        @keyframes leafSpin {
+            0%, 100% {
+                transform: rotate(0deg) scale(1);
+                opacity: 1;
+            }
+            25% {
+                transform: rotate(90deg) scale(0.7);
+                opacity: 0.7;
+            }
+            50% {
+                transform: rotate(180deg) scale(1);
+                opacity: 1;
+            }
+            75% {
+                transform: rotate(270deg) scale(0.7);
+                opacity: 0.7;
+            }
+        }
+
+        .spinner-glow {
+            position: absolute;
+            inset: -10px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(212, 136, 58, 0.3) 0%, transparent 70%);
+            animation: glowPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes glowPulse {
+            0%, 100% {
+                opacity: 0.4;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.2);
+            }
+        }
+
+        /* Compact loading dots */
+        .loading-dots {
+            display: inline-flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .loading-dots span {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            animation: dotBounce 1.4s ease-in-out infinite;
+        }
+
+        .loading-dots span:nth-child(1) {
+            background: var(--amber-light);
+            animation-delay: 0s;
+        }
+
+        .loading-dots span:nth-child(2) {
+            background: var(--amber);
+            animation-delay: 0.2s;
+        }
+
+        .loading-dots span:nth-child(3) {
+            background: var(--rust);
+            animation-delay: 0.4s;
+        }
+
+        @keyframes dotBounce {
+            0%, 60%, 100% {
+                transform: translateY(0) scale(1);
+                opacity: 0.6;
+            }
+            30% {
+                transform: translateY(-10px) scale(1.2);
+                opacity: 1;
+            }
+        }
+
+        /* ============================================================
+           SUCCESS SCREEN - Enhanced
+           ============================================================ */
+        .success-container {
+            text-align: center;
+            animation: fadeInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .success-icon {
+            font-size: 72px;
+            margin-bottom: 20px;
+            animation: successBounce 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+            filter: drop-shadow(0 4px 16px rgba(212, 136, 58, 0.3));
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes successBounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0) scale(1);
+            }
+            40% {
+                transform: translateY(-20px) scale(1.1);
+            }
+            60% {
+                transform: translateY(-10px) scale(1.05);
+            }
+        }
+
+        /* ============================================================
+           NAVIGATION BUTTONS
+           ============================================================ */
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1.5px solid rgba(255, 255, 255, 0.12);
+            flex: 1;
+        }
+
+        .btn-next {
+            background: linear-gradient(135deg, var(--rust), var(--amber), var(--amber-light));
+            border: 1.5px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 
+                0 4px 16px var(--rust-glow),
+                inset 0 1px 0 rgba(255,255,255,0.3);
+            flex: 2;
+        }
+
+        /* ============================================================
+           UTILITY CLASSES
+           ============================================================ */
+        .hidden {
+            display: none !important;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 560px) {
+            .card {
+                width: 96%;
+                padding: 28px 22px 24px;
+            }
+            .header {
+                padding: 12px 16px;
+            }
+            .welcome-title {
+                font-size: 22px;
+            }
+        }
+
+        @media (max-height: 700px) {
+            .card {
+                margin-top: 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-base"></div>
+    <div class="bg-gradient-layer"></div>
+    <div class="bg-texture"></div>
+    <div class="bg-fog"></div>
+    <canvas id="particles-canvas"></canvas>
+    <canvas id="leaves-canvas"></canvas>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-svg-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M2 17L12 22L22 17" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="logo-text"><span class="b">Blink</span></div>
+            </div>
+            <div class="site-subtitle">by @ikjava</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="card glass">
+            <!-- Loading Screen -->
+            <div id="loadingScreen">
+                <div class="welcome-title">
+                    <div class="spinner-container">
+                        <div class="spinner">
+                            <div class="spinner-glow"></div>
+                            <div class="spinner-leaf"></div>
+                            <div class="spinner-leaf"></div>
+                            <div class="spinner-leaf"></div>
+                            <div class="spinner-leaf"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="welcome-title" style="margin-top: 16px;">Loading...</div>
+                <div class="welcome-subtitle">Connecting to Telegram...</div>
+            </div>
+
+            <!-- Welcome Screen (for returning users) -->
+            <div id="welcomeScreen" class="hidden">
+                <div class="welcome-title">Welcome back, <span id="userName"></span>! 👋</div>
+                <div class="welcome-subtitle">Ready to continue your journey?</div>
+                <button class="btn btn-primary" onclick="goToHome()">Enter Blink →</button>
+            </div>
+
+            <!-- Registration Screen -->
+            <div id="registerScreen" class="hidden">
+                <div class="progress-container">
+                    <div class="progress-dots">
+                        <div class="dot" id="dot1"></div>
+                        <div class="dot" id="dot2"></div>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progressBar" style="width: 50%"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">Step 1 of 2</div>
+                </div>
+
+                <!-- Step 1: Player Name -->
+                <div id="step1">
+                    <div class="welcome-title">What's your name? 🍂</div>
+                    <div class="welcome-subtitle">Choose a display name that represents you</div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">Player Name</label>
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                id="playerName" 
+                                class="input-field" 
+                                placeholder="Enter your name"
+                                maxlength="13"
+                                autocomplete="off"
+                            >
+                            <span class="char-counter" id="nameCounter">0/13</span>
+                        </div>
+                        <div class="input-hint">Letters and numbers only (1-13 characters)</div>
+                        <div class="input-error hidden" id="nameError"></div>
+                    </div>
+
+                    <div class="nav-buttons">
+                        <button class="btn btn-next" onclick="nextStep()">Continue →</button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Player Tag -->
+                <div id="step2" class="hidden">
+                    <div class="welcome-title">Choose your tag 🏷️</div>
+                    <div class="welcome-subtitle">This is your unique identifier in the game</div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">Player Tag</label>
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                id="playerTag" 
+                                class="input-field" 
+                                placeholder="Enter your tag"
+                                maxlength="10"
+                                autocomplete="off"
+                            >
+                            <span class="char-counter" id="tagCounter">0/10</span>
+                        </div>
+                        <div class="input-hint">No spaces allowed (1-10 characters)</div>
+                        <div class="input-error hidden" id="tagError"></div>
+                    </div>
+
+                    <div class="nav-buttons">
+                        <button class="btn btn-back" onclick="prevStep()">← Back</button>
+                        <button class="btn btn-next" onclick="completeRegistration()" id="registerBtn">
+                            Complete Setup
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Success Screen -->
+            <div id="successScreen" class="hidden">
+                <div class="success-container">
+                    <div class="success-icon">🎉</div>
+                    <div class="welcome-title">Welcome to Blink, <span id="successName"></span>!</div>
+                    <div class="welcome-subtitle">Your account has been created successfully. Let's get started!</div>
+                    <button class="btn btn-primary" onclick="goToHome()" style="margin-top: 24px;">
+                        Start Playing →
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Telegram WebApp initialization
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+
+        // Configuration
+        const API_URL = 'http://localhost:3000'; // Change this to your backend URL
+        let currentStep = 1;
+        let telegramInitData = null;
+        let telegramUser = null;
+
+        // ============================================================
+        // ENHANCED AUTUMN BACKGROUND - Particle System + Falling Leaves
+        // ============================================================
+        (function() {
+            const particlesCanvas = document.getElementById('particles-canvas');
+            const leavesCanvas = document.getElementById('leaves-canvas');
+            const particlesCtx = particlesCanvas.getContext('2d', { alpha: true });
+            const leavesCtx = leavesCanvas.getContext('2d', { alpha: true });
+
+            let W, H;
+
+            function resize() {
+                W = window.innerWidth;
+                H = window.innerHeight;
+                particlesCanvas.width = W;
+                particlesCanvas.height = H;
+                leavesCanvas.width = W;
+                leavesCanvas.height = H;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            // Floating particles (dust/ember effect)
+            let particles = [];
+            for (let i = 0; i < 30; i++) {
+                particles.push({
+                    x: Math.random() * W,
+                    y: Math.random() * H,
+                    size: 1 + Math.random() * 2,
+                    vx: (Math.random() - 0.5) * 0.3,
+                    vy: -0.2 - Math.random() * 0.4,
+                    alpha: 0.2 + Math.random() * 0.4,
+                    color: Math.random() > 0.5 ? '#d4883a' : '#b33a0f'
+                });
+            }
+
+            // Enhanced autumn leaves with realistic shapes
+            const LEAF_COLORS = [
+                { base: '#b33a0f', shade: '#8a2d0b', highlight: '#d4491a' },
+                { base: '#c1440e', shade: '#9a3608', highlight: '#e85d1c' },
+                { base: '#d4883a', shade: '#b06d2a', highlight: '#f0a958' },
+                { base: '#a0522d', shade: '#7d3f20', highlight: '#c76b3f' },
+                { base: '#8b6914', shade: '#6d520f', highlight: '#b08a1e' },
+                { base: '#c97b3a', shade: '#a25f28', highlight: '#e89b50' },
+                { base: '#d2691e', shade: '#a85217', highlight: '#f0872d' },
+                { base: '#cd853f', shade: '#a66930', highlight: '#e8a566' }
+            ];
+
+            let leaves = [];
+            for (let i = 0; i < 40; i++) {
+                leaves.push(createLeaf());
+            }
+
+            function createLeaf() {
+                const colorSet = LEAF_COLORS[Math.floor(Math.random() * LEAF_COLORS.length)];
+                return {
+                    x: Math.random() * W,
+                    y: -50 - Math.random() * H * 0.5,
+                    size: 8 + Math.random() * 16,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.06,
+                    vx: (Math.random() - 0.5) * 1.2,
+                    vy: 0.5 + Math.random() * 1.2,
+                    sway: Math.random() * Math.PI * 2,
+                    swaySpeed: 1 + Math.random() * 2,
+                    colorSet: colorSet,
+                    alpha: 0.6 + Math.random() * 0.4,
+                    leafType: Math.floor(Math.random() * 3),
+                    spin: Math.random() * 2,
+                    wobble: Math.random() * 0.5
+                };
+            }
+
+            function drawLeaf(ctx, leaf, time) {
+                ctx.save();
+                ctx.translate(leaf.x, leaf.y);
+                ctx.rotate(leaf.rotation);
+                
+                const perspective = 0.4 + 0.6 * Math.abs(Math.sin(time * leaf.spin + leaf.sway));
+                ctx.scale(perspective, 1);
+                
+                ctx.globalAlpha = leaf.alpha;
+                const s = leaf.size;
+
+                if (leaf.leafType === 0) {
+                    // Oak leaf
+                    ctx.fillStyle = leaf.colorSet.base;
+                    ctx.beginPath();
+                    ctx.moveTo(0, s * 0.5);
+                    ctx.bezierCurveTo(s * 0.15, s * 0.35, s * 0.3, s * 0.3, s * 0.3, s * 0.15);
+                    ctx.bezierCurveTo(s * 0.35, s * 0.1, s * 0.35, 0, s * 0.25, -s * 0.1);
+                    ctx.bezierCurveTo(s * 0.15, -s * 0.2, s * 0.1, -s * 0.3, 0, -s * 0.35);
+                    ctx.bezierCurveTo(-s * 0.1, -s * 0.3, -s * 0.15, -s * 0.2, -s * 0.25, -s * 0.1);
+                    ctx.bezierCurveTo(-s * 0.35, 0, -s * 0.35, s * 0.1, -s * 0.3, s * 0.15);
+                    ctx.bezierCurveTo(-s * 0.3, s * 0.3, -s * 0.15, s * 0.35, 0, s * 0.5);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Vein
+                    ctx.strokeStyle = leaf.colorSet.shade;
+                    ctx.lineWidth = s * 0.02;
+                    ctx.globalAlpha = leaf.alpha * 0.5;
+                    ctx.beginPath();
+                    ctx.moveTo(0, s * 0.5);
+                    ctx.lineTo(0, -s * 0.35);
+                    ctx.stroke();
+
+                } else if (leaf.leafType === 1) {
+                    // Maple leaf
+                    ctx.fillStyle = leaf.colorSet.base;
+                    ctx.beginPath();
+                    ctx.moveTo(0, s * 0.45);
+                    ctx.lineTo(-s * 0.05, s * 0.15);
+                    ctx.bezierCurveTo(-s * 0.25, s * 0.25, -s * 0.4, s * 0.15, -s * 0.45, 0);
+                    ctx.bezierCurveTo(-s * 0.4, -s * 0.1, -s * 0.3, -s * 0.15, -s * 0.15, -s * 0.1);
+                    ctx.bezierCurveTo(-s * 0.2, -s * 0.25, -s * 0.1, -s * 0.4, 0, -s * 0.5);
+                    ctx.bezierCurveTo(s * 0.1, -s * 0.4, s * 0.2, -s * 0.25, s * 0.15, -s * 0.1);
+                    ctx.bezierCurveTo(s * 0.3, -s * 0.15, s * 0.4, -s * 0.1, s * 0.45, 0);
+                    ctx.bezierCurveTo(s * 0.4, s * 0.15, s * 0.25, s * 0.25, s * 0.05, s * 0.15);
+                    ctx.closePath();
+                    ctx.fill();
+
+                } else {
+                    // Simple pointed leaf
+                    ctx.fillStyle = leaf.colorSet.base;
+                    ctx.beginPath();
+                    ctx.moveTo(0, s * 0.5);
+                    ctx.bezierCurveTo(s * 0.1, s * 0.3, s * 0.25, s * 0.25, s * 0.25, s * 0.15);
+                    ctx.bezierCurveTo(s * 0.3, s * 0.05, s * 0.3, -s * 0.05, s * 0.25, -s * 0.15);
+                    ctx.bezierCurveTo(s * 0.15, -s * 0.25, s * 0.1, -s * 0.35, 0, -s * 0.4);
+                    ctx.bezierCurveTo(-s * 0.1, -s * 0.35, -s * 0.15, -s * 0.25, -s * 0.25, -s * 0.15);
+                    ctx.bezierCurveTo(-s * 0.3, -s * 0.05, -s * 0.3, s * 0.05, -s * 0.25, s * 0.15);
+                    ctx.bezierCurveTo(-s * 0.25, s * 0.25, -s * 0.1, s * 0.3, 0, s * 0.5);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Central vein
+                    ctx.strokeStyle = leaf.colorSet.shade;
+                    ctx.lineWidth = s * 0.03;
+                    ctx.globalAlpha = leaf.alpha * 0.6;
+                    ctx.beginPath();
+                    ctx.moveTo(0, s * 0.5);
+                    ctx.lineTo(0, -s * 0.4);
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+
+            let time = 0;
+            function animate() {
+                requestAnimationFrame(animate);
+                time += 0.016;
+
+                // Clear canvases
+                particlesCtx.clearRect(0, 0, W, H);
+                leavesCtx.clearRect(0, 0, W, H);
+
+                // Animate particles
+                particles.forEach((p, i) => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    
+                    if (p.y < -10 || p.x < -10 || p.x > W + 10) {
+                        p.x = Math.random() * W;
+                        p.y = H + 10;
+                    }
+
+                    particlesCtx.save();
+                    particlesCtx.globalAlpha = p.alpha;
+                    particlesCtx.fillStyle = p.color;
+                    particlesCtx.shadowBlur = 8;
+                    particlesCtx.shadowColor = p.color;
+                    particlesCtx.beginPath();
+                    particlesCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    particlesCtx.fill();
+                    particlesCtx.restore();
+                });
+
+                // Animate leaves
+                leaves.forEach((leaf, i) => {
+                    leaf.sway += leaf.swaySpeed * 0.016;
+                    const wind = Math.sin(time * 0.5 + leaf.sway) * 1.2;
+                    
+                    leaf.x += leaf.vx + wind * leaf.wobble;
+                    leaf.y += leaf.vy;
+                    leaf.rotation += leaf.rotationSpeed + Math.sin(time * leaf.spin) * 0.03;
+
+                    // Fade out near ground
+                    if (leaf.y > H * 0.85) {
+                        leaf.alpha -= 0.005;
+                    }
+
+                    drawLeaf(leavesCtx, leaf, time);
+
+                    // Reset leaf when off screen
+                    if (leaf.y > H + 50 || leaf.alpha <= 0 || leaf.x < -50 || leaf.x > W + 50) {
+                        Object.assign(leaf, createLeaf());
+                    }
+                });
+
+                // Occasionally add new leaves
+                if (leaves.length < 50 && Math.random() < 0.02) {
+                    leaves.push(createLeaf());
+                }
+            }
+
+            animate();
+        })();
+
+        // Character counters
+        document.getElementById('playerName')?.addEventListener('input', function(e) {
+            const counter = document.getElementById('nameCounter');
+            counter.textContent = `${e.target.value.length}/13`;
+        });
+
+        document.getElementById('playerTag')?.addEventListener('input', function(e) {
+            const counter = document.getElementById('tagCounter');
+            counter.textContent = `${e.target.value.length}/10`;
+        });
+
+        // Initialize app
+        async function init() {
+            try {
+                // Get Telegram data
+                telegramInitData = tg.initData;
+                telegramUser = tg.initDataUnsafe?.user;
+
+                if (!telegramInitData || !telegramUser) {
+                    showError('Unable to connect to Telegram. Please open this app from Telegram.');
+                    return;
+                }
+
+                // Check if user is registered
+                const response = await fetch(`${API_URL}/check-registration?telegramId=${telegramUser.id}`);
+                const data = await response.json();
+
+                if (data.registered && data.user) {
+                    // Show welcome screen for returning user
+                    document.getElementById('userName').textContent = data.user.playerName;
+                    showScreen('welcomeScreen');
+                } else {
+                    // Show registration screen for new user
+                    showScreen('registerScreen');
+                    updateProgress();
+                }
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showError('Connection error. Please try again.');
+            }
+        }
+
+        // Show specific screen
+        function showScreen(screenId) {
+            const screens = ['loadingScreen', 'welcomeScreen', 'registerScreen', 'successScreen'];
+            screens.forEach(screen => {
+                document.getElementById(screen).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        // Show error
+        function showError(message) {
+            showScreen('loadingScreen');
+            document.querySelector('#loadingScreen .welcome-title:last-of-type').innerHTML = '⚠️ Error';
+            document.querySelector('#loadingScreen .welcome-subtitle').textContent = message;
+        }
+
+        // Update progress indicator
+        function updateProgress() {
+            const dot1 = document.getElementById('dot1');
+            const dot2 = document.getElementById('dot2');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+
+            if (currentStep === 1) {
+                dot1.classList.add('active');
+                dot1.classList.remove('completed');
+                dot2.classList.remove('active', 'completed');
+                progressBar.style.width = '50%';
+                progressText.textContent = 'Step 1 of 2';
+            } else if (currentStep === 2) {
+                dot1.classList.remove('active');
+                dot1.classList.add('completed');
+                dot2.classList.add('active');
+                progressBar.style.width = '100%';
+                progressText.textContent = 'Step 2 of 2';
+            }
+        }
+
+        // Next step in registration
+        function nextStep() {
+            const playerName = document.getElementById('playerName').value.trim();
+            
+            // Validate player name
+            if (!playerName) {
+                showInputError('nameError', 'Please enter a player name');
+                return;
+            }
+
+            if (playerName.length > 13) {
+                showInputError('nameError', 'Name must be 13 characters or less');
+                return;
+            }
+
+            if (!/^[a-zA-Z0-9]+$/.test(playerName)) {
+                showInputError('nameError', 'Only letters and numbers allowed, no spaces');
+                return;
+            }
+
+            // Move to step 2
+            currentStep = 2;
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('step2').classList.remove('hidden');
+            updateProgress();
+            
+            // Auto-suggest tag based on name
+            if (!document.getElementById('playerTag').value) {
+                document.getElementById('playerTag').value = playerName.toLowerCase();
+                document.getElementById('tagCounter').textContent = `${playerName.length}/10`;
+            }
+        }
+
+        // Previous step in registration
+        function prevStep() {
+            currentStep = 1;
+            document.getElementById('step2').classList.add('hidden');
+            document.getElementById('step1').classList.remove('hidden');
+            updateProgress();
+        }
+
+        // Complete registration
+        async function completeRegistration() {
+            const playerName = document.getElementById('playerName').value.trim();
+            const playerTag = document.getElementById('playerTag').value.trim();
+            const registerBtn = document.getElementById('registerBtn');
+
+            // Validate player tag
+            if (!playerTag) {
+                showInputError('tagError', 'Please enter a player tag');
+                return;
+            }
+
+            if (playerTag.length > 10) {
+                showInputError('tagError', 'Tag must be 10 characters or less');
+                return;
+            }
+
+            if (/\s/.test(playerTag)) {
+                showInputError('tagError', 'No spaces allowed in tag');
+                return;
+            }
+
+            // Disable button and show loading
+            registerBtn.disabled = true;
+            registerBtn.innerHTML = '<span class="loading-dots"><span></span><span></span><span></span></span> Creating account...';
+
+            try {
+                const response = await fetch(`${API_URL}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        playerName,
+                        playerTag,
+                        telegramInitData
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Show success screen
+                    document.getElementById('successName').textContent = playerName;
+                    showScreen('successScreen');
+                } else {
+                    showInputError('tagError', data.error || 'Registration failed');
+                    registerBtn.disabled = false;
+                    registerBtn.textContent = 'Complete Setup';
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                showInputError('tagError', 'Connection error. Please try again.');
+                registerBtn.disabled = false;
+                registerBtn.textContent = 'Complete Setup';
+            }
+        }
+
+        // Show input error
+        function showInputError(elementId, message) {
+            const errorElement = document.getElementById(elementId);
+            errorElement.textContent = message;
+            errorElement.classList.remove('hidden');
+            
+            // Clear error after 4 seconds
+            setTimeout(() => {
+                errorElement.classList.add('hidden');
+            }, 4000);
+        }
+
+        // Go to home page
+        function goToHome() {
+            window.location.href = 'home.html';
+        }
+
+        // Handle Enter key in inputs
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('playerName')?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') nextStep();
+            });
+
+            document.getElementById('playerTag')?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') completeRegistration();
+            });
+        });
+
+        // Start the app
+        init();
+    </script>
+</body>
+</html>
