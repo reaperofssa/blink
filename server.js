@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
@@ -10,6 +11,7 @@ const axios = require('axios');
 const cors = require('cors');
 
 const app = express();
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
@@ -24,6 +26,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
+app.use(express.static('public'));
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017';
 const DB_NAME = process.env.DB_NAME || 'game_db';
