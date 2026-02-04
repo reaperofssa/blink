@@ -1066,12 +1066,11 @@
     </div>
 
     <script>
-        const API_URL = 'https://blink.zone.id';
+        const API_URL = 'http://localhost:3000';
         const tg = window.Telegram.WebApp;
         tg.expand();
         tg.ready();
 
-        let authToken = null;
         let userData = null;
         let matchmakingInterval = null;
 
@@ -1261,15 +1260,7 @@
         // ============================================================
         async function init() {
             try {
-                // Get auth token from cookie
-                authToken = getCookie('authToken');
-                
-                if (!authToken) {
-                    window.location.href = 'connect.html';
-                    return;
-                }
-
-                // Load dashboard data
+                // Load dashboard data (cookie sent automatically via credentials: 'include')
                 await loadDashboard();
                 
                 // Check for active matchmaking
@@ -1277,15 +1268,14 @@
                 
             } catch (error) {
                 console.error('Init error:', error);
+                // If unauthorized, redirect to connect
+                window.location.href = 'connect.html';
             }
         }
 
         async function loadDashboard() {
             try {
                 const response = await fetch(`${API_URL}/api/dashboard`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    },
                     credentials: 'include'
                 });
 
@@ -1358,9 +1348,6 @@
         async function checkMatchmakingStatus() {
             try {
                 const response = await fetch(`${API_URL}/api/matchmaking/status`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    },
                     credentials: 'include'
                 });
 
@@ -1419,8 +1406,7 @@
                 const response = await fetch(`${API_URL}/matchmake`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
+                        'Content-Type': 'application/json'
                     },
                     credentials: 'include',
                     body: JSON.stringify({ mode, playerCount })
@@ -1448,9 +1434,6 @@
             try {
                 await fetch(`${API_URL}/matchmake/cancel`, {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    },
                     credentials: 'include'
                 });
 
@@ -1479,8 +1462,7 @@
                 const response = await fetch(`${API_URL}/create`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
+                        'Content-Type': 'application/json'
                     },
                     credentials: 'include',
                     body: JSON.stringify({ gameType })
@@ -1519,8 +1501,7 @@
                 const response = await fetch(`${API_URL}/join`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
+                        'Content-Type': 'application/json'
                     },
                     credentials: 'include',
                     body: JSON.stringify({ roomId })
@@ -1550,15 +1531,6 @@
             if (userData) {
                 window.location.href = `profile.html?userId=${userData.user.userId}`;
             }
-        }
-
-        // ============================================================
-        // UTILITIES
-        // ============================================================
-        function getCookie(name) {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop().split(';').shift();
         }
 
         // Start app
