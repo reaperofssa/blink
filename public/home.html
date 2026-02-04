@@ -436,6 +436,81 @@
         }
 
         /* ============================================================
+           RANK PROGRESS BAR
+           ============================================================ */
+        .rank-progress-container {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .rank-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .rank-progress-label {
+            font-size: 10px;
+            color: var(--text-sec);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        .rank-progress-info {
+            font-size: 11px;
+            color: var(--amber-light);
+            font-weight: 600;
+        }
+
+        .rank-progress-next {
+            font-size: 10px;
+            color: var(--text-dim);
+        }
+
+        .rank-progress-bar-wrapper {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .rank-progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--rust), var(--amber), var(--amber-light));
+            border-radius: 10px;
+            transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 0 12px rgba(212, 136, 58, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .rank-progress-bar-fill::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255,255,255,0.3) 50%, 
+                transparent 100%);
+            animation: progressShine 2s ease-in-out infinite;
+        }
+
+        .rank-progress-bar-fill.maxed {
+            background: linear-gradient(90deg, var(--gold), var(--amber-glow));
+            box-shadow: 0 0 16px rgba(212, 161, 53, 0.6);
+        }
+
+        @keyframes progressShine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(200%); }
+        }
+
+        /* ============================================================
            SECTION TITLES
            ============================================================ */
         .section {
@@ -904,6 +979,17 @@
                     <div class="stat-label">Level</div>
                 </div>
             </div>
+
+            <!-- Rank Progress -->
+            <div class="rank-progress-container" id="rankProgressContainer">
+                <div class="rank-progress-header">
+                    <div class="rank-progress-label">Progress to <span id="nextRankName">Silver</span></div>
+                    <div class="rank-progress-info" id="progressInfo">0/3 wins</div>
+                </div>
+                <div class="rank-progress-bar-wrapper">
+                    <div class="rank-progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Matchmaking Status -->
@@ -1305,8 +1391,55 @@
                 updateModeRank('normalrnd', data.ranks.normalrnd);
                 updateModeRank('hardrnd', data.ranks.hardrnd);
 
+                // Load rank progress for main mode (normalclassic)
+                await loadRankProgress('normalclassic');
+
             } catch (error) {
                 console.error('Load dashboard error:', error);
+            }
+        }
+
+        async function loadRankProgress(mode = 'normalclassic') {
+            try {
+                const response = await fetch(`${API_URL}/api/rank-progress/${mode}`, {
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                // Update progress display
+                const nextRankName = document.getElementById('nextRankName');
+                const progressInfo = document.getElementById('progressInfo');
+                const progressBarFill = document.getElementById('progressBarFill');
+                const progressContainer = document.getElementById('rankProgressContainer');
+
+                if (data.currentRank === 'mythic') {
+                    // Mythic progression
+                    nextRankName.textContent = `Mythic ${data.currentMythicRank + 1}`;
+                    progressInfo.textContent = `${data.currentWins} wins`;
+                    progressBarFill.style.width = '100%';
+                    progressBarFill.classList.add('maxed');
+                } else {
+                    // Regular progression
+                    const rankNames = {
+                        'bronze': 'Bronze',
+                        'silver': 'Silver',
+                        'gold': 'Gold',
+                        'diamond': 'Diamond',
+                        'legend': 'Legend',
+                        'mythic': 'Mythic'
+                    };
+
+                    nextRankName.textContent = rankNames[data.nextRank] || 'Next Rank';
+                    
+                    const winsInRank = data.totalWinsNeeded - data.winsToNextRank;
+                    progressInfo.textContent = `${winsInRank}/${data.totalWinsNeeded} wins`;
+                    progressBarFill.style.width = `${data.progressPercentage}%`;
+                    progressBarFill.classList.remove('maxed');
+                }
+
+            } catch (error) {
+                console.error('Load rank progress error:', error);
             }
         }
 
