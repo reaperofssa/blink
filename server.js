@@ -1217,7 +1217,45 @@ app.post('/api/room/leave', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-
+app.get('/api/game-status/:roomId', authenticateToken, async (req, res) => {
+  try {
+    const roomId = parseInt(req.params.roomId);
+    const userId = req.user.userId;
+    
+    const room = await roomsCollection.findOne({ roomId });
+    
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+    
+    // Check if user is in the room
+    const isInRoom = room.players.some(p => p.userId === userId);
+    
+    if (!isInRoom) {
+      return res.status(403).json({ error: 'You are not in this room' });
+    }
+    
+    // Check active game state
+    const gameState = activeGames.get(roomId);
+    
+    res.json({
+      roomId: room.roomId,
+      gameType: room.gameType,
+      status: room.status,
+      isRanked: room.isRanked || false,
+      isCreator: room.creatorId === userId,
+      playerCount: room.players.length,
+      hasActiveGame: gameState !== undefined,
+      gameStatus: gameState?.status || null,
+      isEliminated: gameState?.eliminatedPlayers.some(p => p.userId === userId) || false,
+      canSpectate: gameState?.spectators.some(s => s.userId === userId) || false
+    });
+    
+  } catch (error) {
+    console.error('Game status error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 // Get rank progress for current user
 app.get('/api/rank-progress/:mode', authenticateToken, async (req, res) => {
   try {
@@ -2085,44 +2123,49 @@ io.on('connection', async (socket) => {
   
   // Spectate game (for eliminated players)
   socket.on('spectate_game', async ({ roomId }) => {
-    try {
-      const parsedRoomId = parseInt(roomId);
-      
-      const gameState = activeGames.get(parsedRoomId);
-      
-      if (!gameState) {
-        socket.emit('error', { message: 'Game not found' });
-        return;
-      }
-      
-      // Check if player was eliminated from this game
-      const isSpectator = gameState.spectators.find(s => s.userId === socket.userId);
-      
-      if (!isSpectator) {
-        socket.emit('error', { message: 'You cannot spectate this game' });
-        return;
-      }
-      
-      socket.join(`game_${parsedRoomId}`);
-      socket.roomId = parsedRoomId;
-      
-      // Send spectator view
-      socket.emit('spectator_state', {
-        gameType: gameState.gameType,
-        minLetters: gameState.minLetters,
-        currentPlayer: gameState.activePlayers[gameState.currentPlayerIndex],
-        nextPlayer: gameState.activePlayers[(gameState.currentPlayerIndex + 1) % gameState.activePlayers.length],
-        activePlayers: gameState.activePlayers,
-        turnHistory: gameState.turnHistory,
-        status: gameState.status,
-        isSpectating: true
-      });
-      
-    } catch (error) {
-      console.error('Spectate game error:', error);
-      socket.emit('error', { message: 'Failed to spectate game' });
+  try {
+    const parsedRoomId = parseInt(roomId);
+    const gameState = activeGames.get(parsedRoomId);
+    
+    if (!gameState) {
+      socket.emit('error', { message: 'Game not found' });
+      return;
     }
-  });
+    
+    const isSpectator = gameState.spectators.find(s => s.userId === socket.userId);
+    
+    if (!isSpectator) {
+      socket.emit('error', { message: 'You cannot spectate this game' });
+      return;
+    }
+    
+    socket.join(`game_${parsedRoomId}`);
+    socket.roomId = parsedRoomId;
+    
+    // Broadcast spectator joined
+    io.to(`game_${parsedRoomId}`).emit('spectator_joined', {
+      spectatorCount: gameState.spectators.length,
+      spectatorName: socket.userId
+    });
+    
+    socket.emit('spectator_state', {
+      gameType: gameState.gameType,
+      minLetters: gameState.minLetters,
+      currentPlayerIndex: gameState.currentPlayerIndex,
+      currentPlayer: gameState.activePlayers[gameState.currentPlayerIndex],
+      nextPlayer: gameState.activePlayers[(gameState.currentPlayerIndex + 1) % gameState.activePlayers.length],
+      activePlayers: gameState.activePlayers,
+      eliminatedPlayers: gameState.eliminatedPlayers,
+      turnHistory: gameState.turnHistory,
+      status: gameState.status,
+      isSpectating: true
+    });
+    
+  } catch (error) {
+    console.error('Spectate game error:', error);
+    socket.emit('error', { message: 'Failed to spectate game' });
+  }
+});
   
   // Join waiting room (for waiting page real-time updates)
   socket.on('join_waiting_room', async ({ roomId }) => {
@@ -2247,7 +2290,21 @@ io.on('connection', async (socket) => {
       }
       
       // Word accepted
-      gameState.usedWords.add(wordUpper);
+      // Word accepted
+gameState.usedWords.add(wordUpper);
+
+// Track streak
+const currentStreak = gameState.wordStreaks.get(socket.userId) || 0;
+gameState.wordStreaks.set(socket.userId, currentStreak + 1);
+
+// Check for streak achievement
+if (currentStreak + 1 >= 5) {
+  io.to(`game_${socket.roomId}`).emit('streak_achievement', {
+    userId: socket.userId,
+    playerName: currentPlayer.playerName,
+    streak: currentStreak + 1
+  });
+}
       
       // Track turn history
       const turnStartTime = Date.now();
@@ -2297,74 +2354,143 @@ io.on('connection', async (socket) => {
   });
   
   socket.on('disconnect', () => {
-    console.log(`User disconnected: ${socket.userId}`);
-    
-    // If user was in an active game, eliminate them after grace period
-    if (socket.roomId) {
-      const gameState = activeGames.get(socket.roomId);
-      
-      if (gameState && gameState.status === 'playing') {
-        // Clear any existing disconnect timer
-        if (disconnectTimers.has(socket.userId)) {
-          clearTimeout(disconnectTimers.get(socket.userId));
-        }
-        
-        // Give 10 second grace period for reconnection
-        const timer = setTimeout(() => {
-          const stillActive = gameState.activePlayers.find(p => p.userId === socket.userId);
-          if (stillActive) {
-            eliminatePlayer(socket.roomId, socket.userId, 'disconnect');
-          }
-          disconnectTimers.delete(socket.userId);
-        }, 10000); // 10 second grace
-        
-        disconnectTimers.set(socket.userId, timer);
-      }
+  console.log(`User disconnected: ${socket.userId}`);
+
+  if (!socket.roomId) return;
+
+  const gameState = activeGames.get(socket.roomId);
+  if (!gameState || gameState.status !== 'playing') return;
+
+  /* -----------------------------
+     CONNECTED PLAYERS / PAUSE LOGIC
+  ------------------------------ */
+
+  gameState.connectedPlayers.delete(socket.userId);
+
+  const activePlayerIds = new Set(
+    gameState.activePlayers.map(p => p.userId)
+  );
+
+  const connectedActiveCount = Array.from(gameState.connectedPlayers)
+    .filter(id => activePlayerIds.has(id)).length;
+
+  if (
+    connectedActiveCount < gameState.activePlayers.length / 2 &&
+    !gameState.pausedAt
+  ) {
+    gameState.pausedAt = Date.now();
+    gameState.pauseReason = 'connection_issues';
+
+    if (gameTimers.has(socket.roomId)) {
+      clearTimeout(gameTimers.get(socket.roomId));
+      gameTimers.delete(socket.roomId);
     }
-  });
-  
+
+    io.to(`game_${socket.roomId}`).emit('game_paused', {
+      reason: 'Too many players disconnected',
+      willResumeIn: 30
+    });
+
+    setTimeout(() => {
+      if (gameState.pausedAt) {
+        gameState.pausedAt = null;
+        gameState.pauseReason = null;
+        io.to(`game_${socket.roomId}`).emit('game_resumed');
+        startTurn(socket.roomId);
+      }
+    }, 30000);
+  }
+
+  /* -----------------------------
+     10-SECOND GRACE → ELIMINATION
+  ------------------------------ */
+
+  if (disconnectTimers.has(socket.userId)) {
+    clearTimeout(disconnectTimers.get(socket.userId));
+  }
+
+  const timer = setTimeout(() => {
+    const stillActive = gameState.activePlayers.find(
+      p => p.userId === socket.userId
+    );
+
+    if (stillActive) {
+      eliminatePlayer(socket.roomId, socket.userId, 'disconnect');
+    }
+
+    disconnectTimers.delete(socket.userId);
+  }, 10000);
+
+  disconnectTimers.set(socket.userId, timer);
+});
+
+  socket.on('connect', () => {
+  const gameState = activeGames.get(socket.roomId);
+  if (gameState) {
+    gameState.connectedPlayers.add(socket.userId);
+  }
+});
   // Handle reconnection
-  socket.on('reconnect_game', ({ roomId }) => {
-    // Clear disconnect timer from registry
-    if (disconnectTimers.has(socket.userId)) {
-      clearTimeout(disconnectTimers.get(socket.userId));
-      disconnectTimers.delete(socket.userId);
-    }
+  socket.on('reconnect_game', async ({ roomId }) => {
+  if (disconnectTimers.has(socket.userId)) {
+    clearTimeout(disconnectTimers.get(socket.userId));
+    disconnectTimers.delete(socket.userId);
+  }
+  
+  const gameState = activeGames.get(parseInt(roomId));
+  
+  if (gameState) {
+    const isActive = gameState.activePlayers.find(p => p.userId === socket.userId);
+    const isEliminated = gameState.eliminatedPlayers.find(p => p.userId === socket.userId);
     
-    // Check if player is still in the game
-    const gameState = activeGames.get(parseInt(roomId));
-    if (gameState) {
-      const isActive = gameState.activePlayers.find(p => p.userId === socket.userId);
-      const isEliminated = gameState.eliminatedPlayers.find(p => p.userId === socket.userId);
+    if (isEliminated) {
+      socket.emit('already_eliminated', {
+        message: 'You were eliminated while disconnected',
+        reason: isEliminated.reason,
+        placement: isEliminated.placement,
+        canSpectate: true,
+        stats: gameState.playerStats[socket.userId]
+      });
+    } else if (isActive) {
+      socket.join(`game_${roomId}`);
+      socket.roomId = roomId;
       
-      if (isEliminated) {
-        // Inform player they were eliminated
-        socket.emit('already_eliminated', {
-          message: 'You were eliminated while disconnected',
-          reason: isEliminated.reason,
-          placement: isEliminated.placement,
-          canSpectate: true
-        });
-      } else if (isActive) {
-        // Player is still active, send current game state
-        socket.join(`game_${roomId}`);
-        socket.roomId = roomId;
-        
-        socket.emit('game_state', {
-          gameType: gameState.gameType,
-          minLetters: gameState.minLetters,
-          currentPlayerIndex: gameState.currentPlayerIndex,
-          currentPlayer: gameState.activePlayers[gameState.currentPlayerIndex],
-          activePlayers: gameState.activePlayers,
-          eliminatedPlayers: gameState.eliminatedPlayers,
-          currentLetter: gameState.currentLetter,
-          timeLimit: gameState.timeLimit,
-          roundsPassed: gameState.roundsPassed,
-          status: gameState.status
-        });
-      }
+      socket.emit('game_state', {
+        gameType: gameState.gameType,
+        minLetters: gameState.minLetters,
+        currentPlayerIndex: gameState.currentPlayerIndex,
+        currentPlayer: gameState.activePlayers[gameState.currentPlayerIndex],
+        nextPlayer: gameState.activePlayers[(gameState.currentPlayerIndex + 1) % gameState.activePlayers.length],
+        activePlayers: gameState.activePlayers,
+        eliminatedPlayers: gameState.eliminatedPlayers,
+        currentLetter: gameState.currentLetter,
+        timeLimit: gameState.timeLimit,
+        roundsPassed: gameState.roundsPassed,
+        turnHistory: gameState.turnHistory,
+        status: gameState.status
+      });
+      
+      // Send current turn info
+      socket.emit('turn_start', {
+        currentPlayer: {
+          userId: gameState.activePlayers[gameState.currentPlayerIndex].userId,
+          playerName: gameState.activePlayers[gameState.currentPlayerIndex].playerName
+        },
+        nextPlayer: {
+          userId: gameState.activePlayers[(gameState.currentPlayerIndex + 1) % gameState.activePlayers.length].userId,
+          playerName: gameState.activePlayers[(gameState.currentPlayerIndex + 1) % gameState.activePlayers.length].playerName
+        },
+        currentLetter: gameState.currentLetter,
+        minLetters: gameState.minLetters,
+        timeLimit: gameState.timeLimit,
+        roundsPassed: gameState.roundsPassed,
+        turnHistory: gameState.turnHistory
+      });
+    } else {
+      socket.emit('error', { message: 'Game state inconsistent' });
     }
-  });
+  }
+});
 });
 
 // Initialize game
@@ -2402,7 +2528,10 @@ async function initializeGame(roomId, room) {
     playerStats: {},
     turnHistory: [], // Track all turns for transparency
     afkTracking: new Map(), // userId -> consecutiveMissedTurns
-    createdAt: new Date()
+    createdAt: new Date(),
+    pausedAt: null,
+    pauseReason: null,
+    connectedPlayers: new Set()
   };
   
   // Initialize player stats
@@ -2429,8 +2558,8 @@ async function initializeGame(roomId, room) {
   startTurn(roomId);
 }
 
-// Start turn with timer
-function startTurn(roomId) {
+// Start turn with timerfunction startTurn(roomId) {
+  function startTurn(roomId) {
   const gameState = activeGames.get(roomId);
   
   if (!gameState) return;
@@ -2439,7 +2568,8 @@ function startTurn(roomId) {
   const nextPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.activePlayers.length;
   const nextPlayer = gameState.activePlayers[nextPlayerIndex];
   
-  // Broadcast turn start
+  const turnStartTime = Date.now();
+  
   io.to(`game_${roomId}`).emit('turn_start', {
     currentPlayer: {
       userId: currentPlayer.userId,
@@ -2453,21 +2583,17 @@ function startTurn(roomId) {
     minLetters: gameState.minLetters,
     timeLimit: gameState.timeLimit,
     roundsPassed: gameState.roundsPassed,
-    turnHistory: gameState.turnHistory
+    turnHistory: gameState.turnHistory,
+    serverTime: turnStartTime // Add server timestamp
   });
   
-  // Clear existing timer from registry
   if (gameTimers.has(roomId)) {
     clearTimeout(gameTimers.get(roomId));
   }
   
-  // Set timer for elimination in central registry
   const timer = setTimeout(() => {
-    // Increment AFK counter
     const currentAfk = gameState.afkTracking.get(currentPlayer.userId) || 0;
     gameState.afkTracking.set(currentPlayer.userId, currentAfk + 1);
-    
-    // Eliminate if 2+ consecutive missed turns (AFK detection)
     const eliminationReason = currentAfk >= 1 ? 'afk' : 'timeout';
     
     eliminatePlayer(roomId, currentPlayer.userId, eliminationReason);
@@ -2476,7 +2602,6 @@ function startTurn(roomId) {
   
   gameTimers.set(roomId, timer);
 }
-
 // Eliminate player
 async function eliminatePlayer(roomId, userId, reason) {
   const gameState = activeGames.get(roomId);
@@ -2543,13 +2668,18 @@ async function eliminatePlayer(roomId, userId, reason) {
   
   // Broadcast elimination
   io.to(`game_${roomId}`).emit('player_eliminated', {
-    userId,
-    playerName: eliminatedPlayer.playerName,
-    reason,
-    isRageQuit,
-    remainingPlayers: gameState.activePlayers.length,
-    canSpectate: true
-  });
+  userId,
+  playerName: eliminatedPlayer.playerName,
+  reason,
+  isRageQuit,
+  remainingPlayers: gameState.activePlayers.length,
+  canSpectate: true,
+  stats: {
+    wordsPlayed: gameState.playerStats[userId]?.wordsUsed.length || 0,
+    longestWord: gameState.playerStats[userId]?.longestWord || '',
+    placement: gameState.activePlayers.length + 1
+  }
+});
   
   // Check if game is over
   if (gameState.activePlayers.length === 1) {
@@ -2652,27 +2782,73 @@ async function endGame(roomId) {
     const points = calculatePoints(stats, isWinner, totalPlayers);
     
     // Update user in database
-    const updateData = {
-      $inc: {
-        points: points,
-        wins: isWinner ? 1 : 0,
-        losses: isWinner ? 0 : 1,
-        gamesPlayed: 1
-      }
-    };
-    
-    await usersCollection.updateOne({ userId: player.userId }, updateData);
-    
-    // Calculate and update level
-    const user = await usersCollection.findOne({ userId: player.userId });
-    const newLevel = calculateLevel(user.points);
-    
-    if (newLevel > user.level) {
-      await usersCollection.updateOne(
-        { userId: player.userId },
-        { $set: { level: newLevel } }
-      );
+    // Update base stats (points, wins, etc.)
+await usersCollection.updateOne(
+  { userId: player.userId },
+  {
+    $inc: {
+      points: points,
+      wins: isWinner ? 1 : 0,
+      losses: isWinner ? 0 : 1,
+      gamesPlayed: 1
     }
+  }
+);
+
+// Fetch updated user
+const user = await usersCollection.findOne({ userId: player.userId });
+
+/* -----------------------------
+   PERSONAL BESTS LOGIC (NEW)
+------------------------------ */
+
+const personalBests = user.personalBests || {
+  longestWord: '',
+  fastestTurn: Infinity,
+  highestPlacement: Infinity
+};
+
+const updates = {};
+
+// Longest word personal best
+if (
+  stats.longestWord &&
+  stats.longestWord.length > personalBests.longestWord.length
+) {
+  updates['personalBests.longestWord'] = stats.longestWord;
+  stats.newPersonalBest = 'longestWord';
+}
+
+// Fastest turn personal best
+const fastestTurn = gameState.turnHistory
+  .filter(t => t.userId === player.userId)
+  .reduce((min, t) => Math.min(min, t.timeTaken), Infinity);
+
+if (fastestTurn < personalBests.fastestTurn) {
+  updates['personalBests.fastestTurn'] = fastestTurn;
+  stats.newPersonalBest = stats.newPersonalBest ? 'both' : 'fastestTurn';
+}
+
+// Save personal bests if any changed
+if (Object.keys(updates).length > 0) {
+  await usersCollection.updateOne(
+    { userId: player.userId },
+    { $set: updates }
+  );
+}
+
+/* -----------------------------
+   LEVEL UPDATE (EXISTING)
+------------------------------ */
+
+const newLevel = calculateLevel(user.points + points);
+
+if (newLevel > user.level) {
+  await usersCollection.updateOne(
+    { userId: player.userId },
+    { $set: { level: newLevel } }
+  );
+}
     
     // Update ranked stats if this is a ranked game
     if (gameState.isRanked) {
